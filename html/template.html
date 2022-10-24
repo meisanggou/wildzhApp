@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="divport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/style.css" />
+    <title>Template</title>
+    <style>
+        header {
+            background-color: #6ab494;
+        }
+
+        header ul li {
+            height: 50px;
+            line-height: 50px;
+            text-align: center;
+            display: none;
+            color: #323237;
+            position: relative;
+            font-size: 18px;
+        }
+
+        header ul li.active {
+            display: block;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div id="wrap" class="flex-wrap flex-vertical">
+        <header>
+            <ul>
+                <li class="border-b active">Header</li>
+            </ul>
+        </header>
+        <div id="main" class="flex-con page">
+
+        </div>
+    </div>
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/c.js"></script>
+<script type="text/javascript">
+    apiready = function() {
+        $api.fixStatusBar($api.dom('header'));
+        api.setStatusBarStyle({
+            style: 'dark',
+            color: '#6ab494'
+        });
+    }
+</script>
+<script type="text/javascript">
+    var this_data = {};
+    function setData(nData) {
+        if (nData != null) {
+            for (key in nData) {
+                this_data[key] = nData[key];
+            }
+        }
+    }
+</script>
+<script type="text/javascript">
+    function onLoad(){
+      
+    }
+</script>
+</html>

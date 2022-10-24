@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="divport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/menu.css" />
+    <title>文件浏览</title>
+    <style>
+        header {
+            background-color: #f2f2f2;
+        }
+
+        .status {
+            /*height: 50px;
+            line-height: 50px;*/
+            text-align: left;;
+            display: block;
+            color: #323237;
+            position: relative;
+            margin-left: 10px;
+        }
+
+        .foot-div {
+            width: 100%;
+            height: 50px;
+        }
+
+        .page {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin： auto;
+            font-size: 20px;
+        }
+
+        .login {
+            display: block;
+            width: 100%;
+        }
+
+        .form-lable {
+            text-align: justify;
+            text-align: justify;
+            text-justify: distribute-all-lines;
+            /*ie6-8*/
+            text-align-last: justify;
+            /* ie9*/
+            -moz-text-align-last: justify;
+            /*ff*/
+            -webkit-text-align-last: justify;
+            /*chrome 20+*/
+            width: 80px;
+        }
+
+        .item {
+            width: 100%;
+            display: flex;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-input {
+            margin-left: 5px;
+            border-radius: 1px;
+            border: 1px solid #c5bebe;
+            height: 23px;
+            width: 60%;
+            font-size: 20px;
+        }
+
+        .form-button {
+            font-size: 20px;
+        }
+
+        #div_pg_lab {}
+
+        #div_pg {
+            z-index: 11;
+            position: fixed;
+            bottom: 60px;
+            width: 100%;
+        }
+
+        #div_pg progress {
+            width: 100%;
+        }
+        .model {
+          position: absolute;
+          top: 0;
+          left: 0;
+          background-color: rgba(9, 9, 9, 0.63);
+          width: 100%;
+          height: 100%;
+          z-index: 100000;
+        }
+        /*input {}*/
+    </style>
+</head>
+
+<body>
+    <div id="wrap" class="flex-wrap flex-vertical">
+        <header>
+            <div class="status">
+                <div><span></span><span id="current_location"></span></div>
+                <div>
+                    <span>显示条目:</span>
+                    <span id="current_num"></span>
+                    <span>总条目:</span>
+                    <span id="total_num"></span>
+                    <span>已读条目:</span>
+                    <span id="read_num"></span>
+                </div>
+            </div>
+
+        </header>
+        <div id="main" class="flex-con">
+
+        </div>
+        <div class="model display-none" id="model_pg">
+          <div id="div_pg">
+              <div id="pg_txt">正在进行</div>
+              <progress max="100" value="10" id="pg_value"></progress>
+          </div>
+        </div>
+        <div data-role="widget" data-widget="nav4" class="nav4">
+            <nav>
+                <div id="nav4_ul" class="nav_4">
+                    <ul class="box">
+                        <li>
+                            <a href="javascript:;" class=""><span>操作</span></a>
+                            <dl>
+                                <dd>
+                                    <a href="#"><span>显示已读</span></a>
+                                </dd>
+                                <dd>
+                                    <a href="#"><span onclick="menu_set_read()">当前已读</span></a>
+                                </dd>
+                                <dd>
+                                    <a href="#"><span>所有已读</span></a>
+                                </dd>
+                                <dd>
+                                    <a href="#"><span onclick="async_db_sync()">同步</span></a>
+                                </dd>
+                            </dl>
+                        </li>
+                        <li>
+                            <a href="javascript:;" class=""><span>文件</span></a>
+                            <dl>
+                                <dd>
+                                    <a href="#" ><span onclick="search()">搜索</span></a>
+                                </dd>
+                                <dd>
+                                    <a href="#"><span onclick="import_from_server()">导入</span></a>
+                                </dd>
+                            </dl>
+                        </li>
+                        <li>
+                            <a href="javascript:;" class="" onclick="to_parent()"><span>上一级</span></a>
+                        </li>
+
+                    </ul>
+                </div>
+            </nav>
+            <div id="nav4_masklayer" class="masklayer_div on">123 </div>
+
+        </div>
+        <!-- <div id="footer" class="border-t bottom">
+            <div class='bottom-btn' onclick="async_db_sync()" class="">同步</div>
+            <div class='bottom-btn' onclick="import_from_server()" class="">导入</div>
+            <div class='bottom-btn' onclick="search()" class="">搜索</div>
+            <div class='bottom-btn' onclick="to_parent()" class="">上一级</div>
+        </div> -->
+    </div>
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/c.js"></script>
+<script type="text/javascript" src="../../script/browse/db.js"></script>
+<script type="text/javascript" src="../../script/browse/import.js"></script>
+<script type="text/javascript" src="../../script/browse/menu.js"></script>
+<script type="text/javascript">
+    var IMPORTING = false;
+    var root_dir = 'fs://en_box';
+    var UIListView = null;
+    var UIActionSelector = null;
+    var path_list = [];
+    var path_index = -1;
+    var hide_num = 0;
+    var SHOW_HIDDEN = false;
+    const SHOW_NUM = 50;
+    var user_name = null;
+
+    var user_root_dir = root_dir;
+    var current_dir = user_root_dir;
+
+    apiready = function() {
+        $api.fixStatusBar($api.dom('header'));
+        api.setStatusBarStyle({
+            style: 'dark',
+            color: '#6ab494'
+        });
+        var pageParam = api.pageParam;
+        if (!'user_name' in pageParam) {
+            user_name = '0.guest';
+        } else {
+            user_name = pageParam.user_name;
+        }
+        user_root_dir = root_dir + '/' + user_name;
+        current_dir = user_root_dir;
+        create_en_dir(root_dir);
+        create_en_dir(user_root_dir);
+
+        init();
+    }
+
+    function set_progress(txt, value) {
+        // value = null 隐藏
+        // value = -1 重置
+        if (value == null) {
+            $api.addCls($api.dom('#model_pg'), 'display-none');
+            return true;
+        }
+        var current_v = $api.attr($api.dom("#pg_value"), "value");
+        if (value == -1) {
+            value = 0;
+        } else {
+            value = parseInt(current_v) + value;
+        }
+
+        $api.removeCls($api.dom('#model_pg'), 'display-none');
+        $api.text($api.dom('#pg_txt'), txt);
+        $api.attr($api.dom("#pg_value"), "value", value);
+    }
+
+    function set_progress_value(value) {
+        value = parseInt(value)
+        $api.attr($api.dom("#pg_value"), "value", value);
+    }
+
+    function get_attribute(top_dir, path) {
+        var fs = api.require('fs');
+        var full_path = top_dir + '/' + path
+        var g_ret = fs.getAttributeSync({
+            path: full_path
+        });
+
+        if (g_ret.status == false) {
+            return null;
+        } else {
+            var size_str = '';
+            if (g_ret.attribute.type == 'folder') {
+                size_str = g_ret.attribute.size + '项';
+            } else {
+                size_str = size_to_str(g_ret.attribute.size);
+            }
+            var path_item = {
+                'type': g_ret.attribute.type,
+                'name': path,
+                'full_path': full_path,
+                'ori_size': g_ret.attribute.size,
+                'size': size_str,
+                'mod_time': timestamp_2_datetime(g_ret.attribute.modificationDate)
+            }
+            return path_item;
+        }
+    }
+
+    function load_dir(top_dir) {
+        var fs = api.require('fs');
+        var r_ret = fs.readDirSync({
+            path: top_dir
+        });
+        r_ret.top_dir = top_dir
+        r_ret.folders = [];
+        r_ret.files = [];
+        if (r_ret.status) {
+            var data = r_ret.data;
+            for (var i = 0; i < data.length; i++) {
+                var _path = data[i];
+                var path_item = get_attribute(top_dir, _path)
+                if (path_item == null) {
+                    continue
+                } else {
+                    if (path_item.type == 'folder') {
+                        r_ret.folders.push(path_item);
+                    } else {
+                        r_ret.files.push(path_item);
+                    }
+                }
+
+            }
+        } else {
+            alert(JSON.stringify(r_ret));
+        }
+        return r_ret;
+    }
+
+    function load_and_copy_files(source_top_dir, dst_top_dir) {
+
+        var r_ret = load_dir(source_top_dir);
+        if (r_ret.status == false) {
+            alert('load' + source_top_dir + '失败！');
+            return false;
+        }
+        var folders = r_ret.folders;
+        // 文件夹处理
+        for (var i = 0; i < folders.length; i++) {
+            var folder = folders[i];
+            // 创建文件夹
+            create_en_dir(dst_top_dir, folder.name);
+            var n_source = source_top_dir + '/' + folder.name;
+            var n_dst = dst_top_dir + '/' + folder.name;
+            // 递归遍历
+            load_and_copy_files(n_source, n_dst);
+
+        }
+        var files = r_ret.files;
+        // 文件处理
+        for (var j = 0; j < files.length; j++) {
+            var file = files[j];
+            var s_file = source_top_dir + '/' + file.name;
+            var d_file = dst_top_dir + '/' + file.name;
+            var hidden_d_file = dst_top_dir + '/.' + file.name;
+            var fs = api.require('fs');
+            // 判断是否存在
+            var c_ret = fs.copyToSync({
+                oldPath: s_file,
+                newPath: dst_top_dir
+            });
+        }
+
+    }
+
+    function create_en_dir(parent_dir, name) {
+        var new_dir = parent_dir;
+        if (name != null && name != undefined) {
+            var new_dir = parent_dir + '/' + name;
+        }
+        var fs = api.require('fs');
+        var ret = fs.existSync({
+            path: new_dir
+        });
+        if (ret.exist) {
+            if (ret.directory) {
+                return true;
+            }
+        }
+        console.info('start create ' + new_dir);
+        c_ret = fs.createDirSync({
+            path: new_dir
+        });
+        if (c_ret.status) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function add_event() {
+        api.addEventListener({
+            name: 'pause'
+        }, function(ret, err) {
+            if (IMPORTING == true) {
+                return false;
+            }
+            api.openWin({
+                name: '主页',
+                url: 'widget://index.html',
+                pageParam: {
+                    from: 'explor.browse'
+                }
+            });
+        });
+        api.addEventListener({
+            name: 'keyback'
+        }, function(ret, err) {
+            back();
+        });
+        api.addEventListener({
+            name: 'viewappear'
+        }, function(ret, err) {
+            if (view_appear != undefined) {
+                view_appear();
+            }
+        });
+        api.addEventListener({
+            name:'longpress'
+        }, function(ret, err){
+           long_press();
+        });
+    }
+
+    function _new_right_btn(name) {
+        return {
+            bgColor: '#388e8e',
+            activeBgColor: '',
+            width: 70,
+            title: name,
+            titleSize: 12,
+            titleColor: '#fff',
+            icon: '',
+            iconWidth: 20
+        }
+    }
+
+    function click_content(uid, txt_mode, size) {
+        if (txt_mode == undefined || txt_mode == null) {
+            txt_mode = 'txt';
+        }
+        var d_or_f = uid[0];
+        var _path = current_dir + '/' + uid.substring(2);
+        if (d_or_f == 'd') {
+            show_directory(_path, size);
+        } else {
+            var l = _path.length;
+            var p_index = _path.lastIndexOf('.')
+            if (p_index < 0) {
+                return;
+            }
+            var extension = _path.substring(p_index);
+            if (extension == '.txt') {
+                dirty_items.push(uid);
+                if (txt_mode == 'bookread') {
+                    api.openWin({
+                        name: '打开TXT',
+                        url: './bookread.html',
+                        pageParam: {
+                            path: _path
+                        }
+                    });
+                } else {
+                    api.openWin({
+                        name: '打开TXT',
+                        url: './opentxt.html',
+                        pageParam: {
+                            path: _path
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    function click_remove(uid, index) {
+      //删除
+      var d_or_f = uid[0];
+      var item_name = uid.substring(2)
+      // 删除确认
+      api.confirm({
+            title: '删除确认',
+            msg: '确定要删除：' + item_name + ' ？',
+            buttons: ['删除', '取消']
+        }, function(ret, err) {
+            var b_idx = ret.buttonIndex;
+            if(b_idx == 1){
+              remove_item_action(uid, index);
+            }
+        });
+    }
+
+    function remove_item_action(uid, index) {
+      //删除
+      var d_or_f = uid[0];
+      var item_name = uid.substring(2)
+      var d_or_f = uid[0];
+      var item_name = uid.substring(2)
+      var _path = current_dir + '/' + item_name;
+      var fs = api.require('fs');
+      if (d_or_f == 'd') {
+          var rm_ret = fs.rmdirSync({
+              path: _path
+          });
+          delete_directory(_path);
+      } else {
+          var rm_ret = fs.removeSync({
+              path: _path
+          })
+      }
+      var success = false;
+      if(rm_ret.status){
+        success = true;
+      }
+      else if(rm_ret.msg.indexOf('找不到') >= 0){
+        success = true;
+      }
+      if (success) {
+          UIListView.deleteItem({
+              index: index
+          }, function(d_ret, err) {
+              console.info(err);
+          });
+          // 从数据库中删除
+          if(d_or_f == 'd'){
+
+          }
+          else{
+            delete_file(_path);
+          }
+      } else {
+          console.info('删除失败！');
+      }
+    }
+
+    function click_rename(uid) {
+        var d_or_f = uid[0];
+        var _path = current_dir + '/' + uid.substring(2);
+        api.prompt({
+            title: '重命名',
+            text: uid.substring(2),
+            buttons: ['确定', '取消']
+        }, function(ret, err) {
+            var index = ret.buttonIndex;
+            var text = ret.text;
+
+            if (index == 1) {
+                rename_directory(current_dir, uid.substring(2), text);
+                show_directory(current_dir);
+            }
+        });
+    }
+
+    function long_press(){
+      if(UIActionSelector == null){
+        UIActionSelector = api.require('UIActionSelector');
+      }
+      var value1 = {'name': '随机乱序', 'policy': 'random'};
+      var value2 = {'name': '文件大小', 'policy': 'size', 'sub': [{'name': '从小到大', 'asc': true}, {'name': '从大到小', 'asc': false}]};
+      var value3 = {'name': '字母顺序', 'policy': 'name', 'sub': [{'name': '从小到大', 'asc': true}, {'name': '从大到小', 'asc': false}]};
+      var values = [value1, value2, value3];
+      UIActionSelector.open({
+          datas: values,
+          // actives: [active],
+          layout: {
+            row: 5,
+            col: 2,
+          },
+          selectedBold: false,
+          animation: true,
+          title: {
+              text: '重新排序',
+          },
+      }, function(ret, err) {
+          if (ret) {
+              if (ret.eventType == 'ok') {
+                  var p = ret.selectedInfo[0]['policy'];
+                  var asc = true;
+                  if(ret.selectedInfo.length > 1){
+                    asc = ret.selectedInfo[1]['asc'];
+                  }
+                  reshow(p, asc);
+              }
+          } else {
+              alert(JSON.stringify(err));
+          }
+      });
+    }
+
+    function init() {
+        add_event();
+
+        init_menu();
+
+        open_uiview([]);
+        init_db();
+    }
+    UILISTVIEW_HEIGHT = 0;
+    function open_uiview(data){
+      var header_height = $api.offset($api.dom('header')).h;
+      UIListView = api.require('UIListView');
+
+      if(UILISTVIEW_HEIGHT == 0){
+        // 当有输入框时， api.winHeight会变小 例如 搜索时输入
+        UILISTVIEW_HEIGHT = api.frameHeight - 46 - header_height;
+      }
+
+      UIListView.open({
+          rect: {
+              x: 0,
+              y: header_height,
+              w: api.winWidth,
+              h: UILISTVIEW_HEIGHT
+          },
+          data: data,
+          rightBtns: [
+              _new_right_btn('删除'),
+              _new_right_btn('重命名'),
+              _new_right_btn('阅读')
+          ],
+          styles: {
+              borderColor: '#696969',
+              item: {
+                  bgColor: '#AFEEEE',
+                  activeBgColor: '#F5F5F5',
+                  height: 55.0,
+                  imgWidth: 40,
+                  imgHeight: 40,
+                  imgCorner: 4,
+                  placeholderImg: '',
+                  titleSize: 12.0,
+                  titleColor: '#000',
+                  subTitleSize: 12.0,
+                  subTitleColor: '#000',
+                  remarkColor: '#000',
+                  remarkSize: 16,
+                  remarkIconWidth: 30
+              }
+          },
+          // fixedOn: api.frameName
+      }, function(ret, err) {
+          if (!ret) {
+              alert(JSON.stringify(err));
+              alert(JSON.stringify(ret));
+              return;
+          }
+          var index = ret.index;
+          switch (ret.eventType) {
+              case 'clickRightBtn':
+                  var btn_index = ret.btnIndex;
+                  UIListView.getDataByIndex({
+                      index: index
+                  }, function(g_ret, err) {
+                      if (!ret) {
+                          return;
+                      }
+                      var uid = g_ret.data.uid;
+                      switch (btn_index) {
+                          case 0:
+                              //删除
+                              click_remove(uid, index);
+                              break;
+                          case 1:
+                              // 重命名
+                              click_rename(uid);
+                              break;
+                          case 2:
+                              // 阅读
+                              click_content(uid, 'bookread');
+                              break;
+                          default:
+                      }
+                  });
+                  break;
+              case 'clickContent':
+                  UIListView.getDataByIndex({
+                      index: index
+                  }, function(g_ret, err) {
+                      var uid = g_ret.data.uid;
+                      var size = g_ret.data.size;
+                      click_content(uid, null, size);
+                  });
+                  break;
+              case 'longPress':
+                long_press();
+                break;
+              default:
+                  break;
+          }
+      });
+    }
+
+    function view_appear() {
+        if (UIListView == null) {
+            return;
+        }
+        if (dirty_items.length <= 0) {
+            UIListView.getCount(function(ret) {
+                $api.text($api.dom("#current_num"), ret.count);
+            });
+            return;
+        }
+        var uid = dirty_items.pop();
+        var name = uid.substring(2);
+        var db_items = db_select(current_dir, name);
+        var current_item = null;
+        var current_index = -1;
+        for (j = 0; j < path_list.length; j++) {
+            if (path_list[j].name == name) {
+                current_item = path_list[j];
+                current_index = j;
+                break;
+            }
+        }
+        if (current_item == null) {
+            console.error(str_format('not found %s', [name]));
+            view_appear();
+            return;
+        }
+        if (db_items.length <= 0) {
+            // 从path_list中移除该项目 同时调整path_index
+            path_list.splice(current_index, 1);
+            if (current_index <= path_index) {
+                path_index = path_index - 1;
+            }
+            $api.text($api.dom("#total_num"), path_list.length);
+            view_appear();
+            return;
+        }
+        var db_item = db_items[0];
+        if (db_item.is_hide != current_item.is_hide) {
+            // 处理隐藏
+            if (db_item.is_hide == '1') {
+                hide_num += 1;
+            } else {
+                hide_num -= 1;
+            }
+            $api.text($api.dom("#read_num"), hide_num);
+            current_item.is_hide = db_item.is_hide;
+        } else {
+            view_appear();
+            return;
+        }
+        if (SHOW_HIDDEN == false && db_item.is_hide == '1') {
+            UIListView.getIndex({
+                key: 'uid',
+                value: uid
+            }, function(ret, err) {
+                if (ret) {
+                    var index = ret.index;
+                    UIListView.deleteItem({
+                        index: index
+                    }, function(ret, err) {
+                        view_appear();
+                    });
+                } else {
+                    view_appear();
+                }
+            });
+        } else {
+            view_appear();
+            return;
+        }
+    }
+
+    function import_dir() {
+        IMPORTING = true;
+        var fileBrowser = api.require('fileBrowser');
+        fileBrowser.open({
+            'confirm': true
+        }, function(ret) {
+            IMPORTING = false;
+            if (ret) {
+                if (ret.folderPath.length <= 0) {
+                    return false;
+                }
+                var path = ret.folderPath[0];
+                api.showProgress({
+                    style: 'default',
+                    animationType: 'fade',
+                    title: '努力加载中...',
+                    text: '先喝杯茶...',
+                    modal: false
+                });
+                var path_items = path.split('/');
+                var n_dir = current_dir + '/' + path_items[path_items.length - 1];
+                set_progress('开始导入...', -1);
+                create_en_dir(n_dir);
+                set_progress('开始复制文件...', 3);
+                load_and_copy_files(path, n_dir);
+                db_sync(40);
+                set_progress('', null);
+            }
+        });
+    }
+
+    function to_parent() {
+        var p_index = current_dir.lastIndexOf('/');
+        if (p_index < 0) {
+
+            return false;
+        }
+        var p_dir = current_dir.substring(0, p_index);
+        // 返回上一级时 禁止更新 上一级的文件个数
+        return show_directory(p_dir, -1);
+
+    }
+
+    function back() {
+        if(IMPORTING){
+          return false;
+        }
+        var r = to_parent();
+        if (r == false) {
+            api.historyBack({}, function(ret, err) {
+                if (!ret.status) {
+                    api.closeWin();
+                }
+            });
+        }
+    }
+</script>
+<script type="text/javascript">
+
+    function delete_directory(dir_name) {
+        db_delete_dir(str_add_suffix(dir_name));
+        var item = path_split2(dir_name);
+        db_delete([item]);
+        var l_item = path_split2(item.top_dir);
+        if (l_item != {}) {
+            l_item['num'] = 'num-1';
+            db_update(l_item);
+        }
+    }
+
+    function delete_file(path) {
+        var item = path_split2(path);
+        db_delete([item]);
+        var l_item = path_split2(item.top_dir);
+        if (l_item != {}) {
+            l_item['num'] = 'num-1';
+            db_update(l_item);
+        }
+    }
+
+    function rename_directory(dir_name, old_name, new_name) {
+        var fs = api.require('fs');
+        var o_path = path_join(dir_name, old_name);
+        var n_path = path_join(dir_name, new_name);
+        fs.rename({
+            oldPath: o_path,
+            newPath: n_path
+        }, function(ret, err) {
+            if (ret.status) {
+                console.info("rename success");
+                db_update_name(dir_name, old_name, new_name);
+                db_rename_dir(o_path, n_path);
+                show_directory(current_dir);
+            } else {
+                alert(JSON.stringify(err));
+            }
+        });
+    }
+
+    function comp_file_item(item_a, item_b) {
+        var p1 = item_a['top_dir'] + item_a['name'];
+        var p2 = item_b['top_dir'] + item_b['name'];
+        return p1.localeCompare(p2);
+    }
+
+    function async_db_sync() {
+        console.info('exec async db sync');
+        db_sync();
+        hide_menu();
+    }
+
+    function db_sync(progress_weight) {
+        if (DB_SYNC_ING == true) {
+            return false;
+        }
+        DB_SYNC_ING = true;
+        if (progress_weight == null || progress_weight == undefined) {
+            progress_weight = 100;
+            set_progress("开始同步", -1);
+        }
+        // 读取本地文件30 排序10 读数据库10 排序10 比较差异15 删除数据5 添加数据10 更新数据5 数据库升级5
+        var scores = weight_split(progress_weight, [30, 10, 10, 10, 15, 5, 10, 5, 5]);
+        // return
+        IMPORTING = true;
+        var folders = new Array();
+        var n_item = path_split2(current_dir);
+        var root_item = {
+            'top_dir': n_item.top_dir,
+            'name': n_item.name,
+            'is_folder': '1',
+            'is_hide': '0',
+            'num': 0,
+            'mod_time': ''
+        };
+        folders.push(root_item);
+        var root_len = str_trim(user_root_dir).length;
+        var now_items = [];
+        var s_num = 0
+        while (folders.length > 0) {
+            var c_item = folders.shift();
+            var c_folder = c_item['top_dir'] + c_item['name'];
+            s_num = s_num + 1;
+            var t = str_format('正在读取%s, 剩余%s个目录', [c_folder, folders.length]);
+            set_progress(t, 0)
+            var f_data = load_dir(c_folder);
+            c_item['num'] = f_data.folders.length + f_data.files.length;
+            now_items.push(c_item);
+            var top_dir = str_add_suffix(c_folder);
+            for (var i = 0; i < f_data.folders.length; i++) {
+                var name = f_data.folders[i].name;
+                var n_item = {
+                    'top_dir': top_dir,
+                    'name': name,
+                    'is_folder': '1',
+                    'num': 0,
+                    'mod_time': f_data.folders[i].mod_time
+                };
+                if (name[0] == '.') {
+                    n_item['is_hide'] = '1';
+                } else {
+                    n_item['is_hide'] = '0';
+                }
+                folders.push(n_item);
+            }
+            for (var i = 0; i < f_data.files.length; i++) {
+                var real_path = f_data.files[i].full_path;
+                var name = f_data.files[i].name;
+                var n_item = {
+                    'top_dir': top_dir,
+                    'name': name,
+                    'is_folder': '0',
+                    'num': f_data.files[i].ori_size,
+                    'mod_time': f_data.files[i].mod_time
+                };
+                if (name[0] == '.') {
+                    n_item['is_hide'] = '1';
+                } else {
+                    n_item['is_hide'] = '0';
+                }
+                now_items.push(n_item);
+            }
+        }
+        set_progress(str_format('读取本地文件目录结束：发现%s项，正在排序', [now_items.length]), scores[0]);
+        // 排序
+        now_items.sort(comp_file_item);
+        set_progress(str_format('本地文件目录现%s项，正在读取数据库中项目', [now_items.length]), scores[1]);
+        // 获得数据库中数据
+        var db_items = db_select(str_add_suffix(current_dir), "");
+        var db_root_items = db_select(root_item.top_dir, root_item.name);
+        if (db_root_items.length > 0) {
+            db_items.push(db_root_items[0]);
+        }
+        set_progress(str_format('本地文件目录现%s项，数据%s项，正在排序', [now_items.length, db_items.length]), scores[2]);
+        db_items.sort(comp_file_item);
+        set_progress(str_format('本地文件目录现%s项，数据%s项，开始比对差异', [now_items.length, db_items.length]), scores[3]);
+        // 比较差异
+        var added = [];
+        var deleted = [];
+        var updated = [];
+        var n_index = 0;
+        var d_index = 0;
+        while (n_index < now_items.length && d_index < db_items.length) {
+            var n_item = now_items[n_index];
+            var d_item = db_items[d_index];
+            var com_r = comp_file_item(n_item, d_item);
+            if (com_r == 0) {
+                d_index = d_index + 1;
+                n_index = n_index + 1;
+                if (n_item.num != d_item.num) {
+                    updated.push(n_item);
+                }
+            } else if (com_r > 0) {
+                d_index = d_index + 1;
+                deleted.push(d_item)
+            } else {
+                n_index = n_index + 1;
+                added.push(n_item);
+            }
+        }
+        for (; n_index < now_items.length; n_index++) {
+            added.push(now_items[n_index]);
+        }
+        for (; d_index < db_items.length; d_index++) {
+            deleted.push(db_items[d_index]);
+        }
+        var _temp = [now_items.length, db_items.length, added.length, deleted.length, updated.length];
+        set_progress(str_format('本地文件目录现%s项，数据%s项，添加%s项，删除%s项，更新%s项，正在删除', _temp), scores[4]);
+        console.info('------------deleted')
+        console.info(deleted.length);
+        db_delete(deleted);
+        set_progress(str_format('本地文件目录现%s项，数据%s项，添加%s项，删除%s项，更新%s项，正在添加', _temp), scores[6]);
+        console.info('------------added')
+        console.info(added.length);
+        db_insert(added);
+        set_progress(str_format('本地文件目录现%s项，数据%s项，添加%s项，删除%s项，更新%s项，正在更新', _temp), scores[7]);
+        console.info('------------updated ' + updated.length);
+        for (var i = 0; i < updated.length; i++) {
+            db_update(updated[i]);
+        }
+        set_progress(str_format('本地文件目录现%s项，数据%s项，添加%s项，删除%s项，更新%s项', _temp), scores[8]);
+        db_upgrade();
+        set_progress(str_format('本地文件目录现%s项，数据%s项，添加%s项，删除%s项，更新%s项', _temp), scores[9]);
+        api.hideProgress();
+        IMPORTING = false;
+        show_directory(current_dir);
+        if (progress_weight == 100) {
+            set_progress('', null);
+        }
+        DB_SYNC_ING = false;
+    }
+
+
+    function reshow_name(name){
+      const max_len = 35;
+      if(name.length < max_len){
+        return name;
+      }
+      var u_len = user_root_dir.length;
+      var n_name = "";
+      var name_items = name.split('/');
+      var i = 0;
+      var l = name_items.length - 1;
+      while (i < 3 && l >= 0 && n_name.length < 30) {
+        n_name = name_items[l] + '/' + n_name;
+        i += 1;
+        l -= 1;
+      }
+      if(l == 0){
+        return n_name;
+      }
+      return 'fs://...' + n_name;
+    }
+
+    function reload_show_path_list(){
+      hide_num = 0;
+      for (var i = 0; i < path_list.length; i++) {
+          var p_item = path_list[i];
+          if(!('filter_show' in p_item)){
+            // 如果是从数据库加载的 没有filter_show
+            p_item['filter_show'] = 'show'; // 进行筛选后 是否显示
+          }
+          if(!('size' in p_item)){
+            // 如果是从数据库加载的 没有size
+            p_item['size'] = p_item['num'];
+          }
+
+          if (p_item.is_hide == '1') {
+              hide_num += 1;
+          }
+      }
+
+
+      path_index = -1;
+      dirty_items = [];
+      // UIListView.reloadData({
+      //     'data': []
+      // });
+      // UIListView.show();
+      show_path_items();
+      $api.text($api.dom("#total_num"), path_list.length);
+      $api.text($api.dom("#read_num"), hide_num);
+      $api.text($api.dom("#current_location"), reshow_name(current_dir));
+    }
+
+    function show_from_db_directory(s_dir, cache_num) {
+        if (s_dir.indexOf(user_root_dir) != 0) {
+            api.toast({
+                msg: '已经是根目录',
+                duration: 2000,
+                location: 'bottom'
+            });
+            return false;
+        }
+        path_list = db_select(s_dir);
+        path_list.sort(function(a, b) {
+            return b['is_folder'] - a['is_folder'];
+        })
+        reload_show_path_list();
+        // 更新父目录 数量 不包含隐藏的
+        var _num = path_list.length - hide_num;
+        if(cache_num != -1 && cache_num != _num){
+          // cache_num  == -1表示禁止更新
+          db_update_dir_num(s_dir, _num);
+        }
+        current_dir = s_dir;
+        return true;
+    }
+
+    function reshow(policy, asc){
+      var sort_func = null;
+      if(policy == 'size'){
+        if(asc == true){
+          sort_func = function(item_a, item_b){ return item_a.size - item_b.size};
+        }
+        else{
+          sort_func = function(item_a, item_b){ return item_b.size - item_a.size};
+        }
+      }
+      else if(policy == 'name'){
+        if(asc == true){
+          sort_func = function(item_a, item_b){ return item_a.name.localeCompare(item_b.name)};
+        }
+        else{
+          sort_func = function(item_a, item_b){ return item_b.name.localeCompare(item_a.name)};
+        }
+      }
+      if(sort_func != null){
+        path_list = path_list.sort(sort_func);
+      }
+      else{
+        path_list = shuffle(path_list);
+      }
+      path_index = -1;
+      UIListView.reloadData({
+          'data': []
+      });
+      show_path_items();
+    }
+
+    function show_path_items_new() {
+        var data = [];
+        var isReload = path_index < 0 ? true : false;
+        var s_dir = current_dir;
+        for (var i = 0; i < SHOW_NUM && path_index + 1 < path_list.length;) {
+            path_index = path_index + 1;
+            var path_item = path_list[path_index];
+            if(path_item.filter_show != 'show'){
+              // 筛选后不显示
+              continue;
+            }
+            if (path_item.is_hide == '1' && SHOW_HIDDEN == false) {
+                // 已读文件
+                continue;
+            }
+            var item = {
+                'title': path_item.name,
+                size: path_item.size,
+                subTitle: path_item.size + ' | ' + path_item.mod_time,
+                remark: '',
+                icon: '',
+                rightBtns: [_new_right_btn('删除'),
+                    _new_right_btn('重命名'),
+                    _new_right_btn('阅读')
+                ],
+                forbidden: false
+            }
+            if (path_item.is_folder == '1') {
+                item['uid'] = 'd_' + path_item.name;
+                item['imgPath'] = 'widget://image/folder.png';
+                item['icon'] = 'widget://image/right_slip.png'
+            } else {
+                item['uid'] = 'f_' + path_item.name;
+                item['imgPath'] = 'widget://image/txt.png';
+            }
+            data.push(item);
+            i++;
+        }
+        if(isReload){
+          if(UIListView){
+            // UIListView.close();
+          }
+          open_uiview(data);
+        }
+        else{
+          UIListView.appendData({
+              'data': data
+          }, function(ret, err){
+          });
+        }
+        UIListView.setRefreshFooter({
+            loadingImg: 'widget://res/UIListView_arrow.png',
+            bgColor: '#F5F5F5',
+            textColor: '#8E8E8E',
+            textUp: '上拉加载更多...',
+            textDown: '松开开始加载...',
+            showTime: false
+        }, function(ret, err) {
+            if (ret) {
+                show_path_items();
+            } else {
+                alert(JSON.stringify(err));
+            }
+        });
+        UIListView.getCount(function(ret) {
+            $api.text($api.dom("#current_num"), ret.count);
+        });
+
+    }
+
+    var show_directory = show_from_db_directory;
+    var show_path_items = show_path_items_new;
+
+    function hide_list(){
+      UIListView.hide();
+    }
+
+    function search(){
+      hide_menu();
+      api.prompt({
+          title: '搜索',
+          buttons: ['确定', '取消']
+      }, function(ret, err) {
+          var index = ret.buttonIndex;
+          var text = ret.text;
+          if(index == 1){
+            start_search(text);
+          }
+      });
+
+    }
+
+    function start_search(text){
+      for (var i = 0; i < path_list.length; i++) {
+          var p_item = path_list[i];
+          if(p_item.name.indexOf(text) >= 0){
+            p_item.filter_show = 'show'; // 进行筛选后 显示
+          }
+          else{
+            p_item.filter_show = 'hidden'; // 进行筛选后 隐藏
+          }
+
+      }
+      path_index = -1;
+      // UIListView.reloadData({
+      //     'data': []
+      // });
+      show_path_items();
+    }
+</script>
+<script type="text/javascript">
+    // 从服务器上导入
+    var _storge_server_key = 'browse.sync_server_url'
+    var sync_server_url = getOrSetCacheData(_storge_server_key);
+    if(sync_server_url == null){
+      sync_server_url = "";
+    }
+
+    function import_from_server(){
+      IMPORTING = true;
+      api.prompt({
+          title: '服务器地址',
+          text: sync_server_url,
+          buttons: ['确定', '取消']
+      }, function(ret, err) {
+          var index = ret.buttonIndex;
+          var text = ret.text;
+          if(index == 1){
+            start_import_from_server(text);
+          }
+          else{
+            IMPORTING = false;
+          }
+      });
+      hide_menu();
+    }
+
+    function menu_set_read(){
+      hide_menu();
+      var txt_nums = 0;
+      for (var i = 0; i <  path_index + 1; i++) {
+          var path_item = path_list[i];
+          if(path_item.filter_show != 'show'){
+            // 筛选后不显示
+            continue;
+          }
+          if (path_item.is_hide == '1' && SHOW_HIDDEN == false) {
+              // 已读文件
+              continue;
+          }
+          if(path_extension(path_item.name)== 'txt'){
+            txt_nums += 1;
+          }
+      }
+      if(txt_nums == 0){
+        api.toast({
+            msg: '当前无可置为已读的文本文件',
+            duration: 2000,
+            location: 'bottom'
+        });
+        return false;
+      }
+      api.confirm({
+        title: '批量设置已读',
+        msg: str_format('确定将当前显示的%s条记录设置为已读吗？', [txt_nums]),
+        buttons: ['确定', '取消']
+      }, function(ret, err) {
+          var index = ret.buttonIndex;
+          if(index == 1){
+            start_set_read();
+          }
+      });
+
+
+    }
+
+    function start_set_read(){
+      api.showProgress({
+          title: '设置已读',
+          text: '任务进行中...',
+          modal: true
+      });
+
+      for (var i = 0; i <  path_index + 1; i++) {
+          var path_item = path_list[i];
+          if(path_item.filter_show != 'show'){
+            // 筛选后不显示
+            continue;
+          }
+          if (path_item.is_hide == '1' && SHOW_HIDDEN == false) {
+              // 已读文件
+              continue;
+          }
+          if(path_extension(path_item.name) == 'txt'){
+              db_update_hide(path_item.top_dir, path_item.name);
+              path_item.is_hide = '1';
+
+          }
+      }
+      reload_show_path_list();
+      api.hideProgress();
+
+    }
+</script>
+</html>

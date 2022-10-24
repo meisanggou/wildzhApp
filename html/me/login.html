@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="divport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/style.css" />
+    <title>登录</title>
+    <style>
+        header {
+            background-color: #f2f2f2;
+        }
+
+        header ul li {
+            height: 50px;
+            line-height: 50px;
+            text-align: center;
+            display: none;
+            color: #323237;
+            position: relative;
+            font-size: 18px;
+        }
+
+        header ul li.active {
+            display: block;
+        }
+
+        .page {
+            width: 100%;
+            /*height: 100%;*/
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin： auto;
+            font-size: 20px;
+        }
+
+        .login {
+            display: block;
+            width: 100%;
+        }
+
+        .form-lable {
+            text-align: justify;
+            text-justify: distribute-all-lines;
+            /*ie6-8*/
+            text-align-last: justify;
+            /* ie9*/
+            -moz-text-align-last: justify;
+            /*ff*/
+            -webkit-text-align-last: justify;
+            /*chrome 20+*/
+            width: 80px;
+        }
+
+        .item {
+            width: 100%;
+            display: flex;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-input {
+            margin-left: 5px;
+            border-radius: 1px;
+            /*border: 1px solid #c5bebe;*/
+            border-bottom: 1px solid #c5bebe;
+            outline: none; // 去除选中状态边框
+            height: 23px;
+            width: 60%;
+            font-size: 23px;
+        }
+
+        .form-button {
+            font-size: 20px;
+        }
+        /*input {}*/
+    </style>
+</head>
+
+<body>
+    <div id="wrap" class="flex-wrap flex-vertical">
+        <header>
+            <ul>
+                <li class="border-b active">登录</li>
+            </ul>
+        </header>
+        <div id="main" class="flex-con page">
+            <div class="">
+                <div class="login">
+                    <div class="item">
+                        <div class="form-lable">账户名</div><span>：</span><input id="user_name" class="form-input" maxlength=20 />
+                    </div>
+                    <div class="item">
+                        <div class="form-lable">密码</div><span>：</span><input id="password" class="form-input" type="password" maxlength=15/>
+                    </div>
+                    <div class="item">
+                        <button class="form-button" onclick="login()">登录</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/c.js"></script>
+<script type="text/javascript">
+    var identity = '';
+    var keys_last_username = 'login.username';
+    apiready = function() {
+        $api.fixStatusBar($api.dom('header'));
+        api.setStatusBarStyle({
+            style: 'dark',
+            color: '#6ab494'
+        });
+        var main_height = api.winHeight - 50;
+        $api.css($api.dom('#main'), 'height:' + main_height + 'px');
+        identity = api.deviceId;
+        init();
+    }
+
+    function init(){
+      var last_username = $api.getStorage(keys_last_username);
+      if(last_username != null){
+        $api.val($api.dom("#user_name"), last_username);
+      }
+    }
+
+    function login_return(ret){
+      if(ret.status == false){
+        api.alert({
+            title: '登录失败',
+            msg: ret.data,
+        });
+      }
+      else{
+        var t_data = ret.data;
+        t_data['identity'] = identity;
+        console.info(JSON.stringify(t_data));
+        getOrSetCurrentUserData(t_data);
+        api.openWin({
+            name: '我的',
+            url: 'widget://index.html',
+            pageParam: {
+                from: 'login',
+                index: 4
+            }
+        });
+      }
+    }
+
+    function login() {
+        var user_name = $api.val($api.dom("#user_name"));
+        var password = $api.val($api.dom("#password"));
+        $api.setStorage(keys_last_username, user_name);
+        if (user_name == 'admin' && password == 'abc123') {
+            api.openWin({
+                name: '文件浏览',
+                url: '../explore/browse.html',
+                pageParam: {
+                    user_name: user_name,
+                    name: 'test'
+                }
+            });
+        }
+        else{
+          var url = '/user/token/password';
+          var data = {'user_name': user_name, 'password': password, 'identity': identity};
+          my_request(url, 'post', data, login_return);
+        }
+    }
+</script>
+
+</html>

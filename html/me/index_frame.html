@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="divport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>个人中心</title>
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/lib_app.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/weui.css" />
+    <style>
+
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+            justify-content: space-between;
+            font-size: 16px;
+            font-family: -apple-system-font, Helvetica Neue, Helvetica, sans-serif;
+        }
+
+        .page-body {
+            width: 100%;
+            flex-grow: 1;
+            overflow-x: hidden;
+        }
+
+        /*.page-section {
+            width: 100%;
+            margin-bottom: 60px;
+        }
+
+        .page-section_center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .page-section:last-child {
+            margin-bottom: 0;
+        }*/
+
+        .center {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .avatar {
+            display: flex;
+            width: 100px;
+            height: 100px;
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 30px;
+        }
+
+        .right-slip {
+            width: 25px;
+            height: 25px;
+            margin: 0 auto;
+        }
+
+        .bottom-tip {
+            color: red;
+            position: fixed;
+            width: 100%;
+            height: 50px;
+            bottom: 10px;
+            /* z-index: -1; */
+            text-align: center;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="page-body">
+            <div id="div_avatar" onclick="toLogin()">
+                <image id="avatar" class="avatar bottom30" mode="aspectFit" src="https://wx.qlogo.cn/mmopen/vi_32/DYAIOgq83erlgx7uJSic3dLkl7VCN9NpQelfMzJS1SibIc6EEO7AjYLj60HG5GMia5m73tWtC8lJ5Qju2GBO8EebQ/132"></image>
+                <text class="center"> </text>
+            </div>
+            <div id="div_login" onclick="toLogin()">
+                <image class="avatar" mode="aspectFit" src="../../image/unregister.png"></image>
+                <text class="center">未登录</text>
+            </div>
+            <form>
+                <div class="page-section">
+                    <div class="weui-cells weui-cells_after-title">
+                        <div class="weui-cell weui-cell_input">
+                            <div class="weui-cell__hd">
+                                <div class="weui-label">昵称</div>
+                            </div>
+                            <div class="weui-cell__bd" bindtap="updateNickNameClick">
+                                <div class="weui-input" id="nick_name"></div>
+                            </div>
+                            <div class="weui-cell__ft right-slip" wx:if="{{ userNo }}">
+                                <!-- <div class="navigator-arrow"></div> -->
+                                <image class="right-slip" mode="aspectFit" src="../../image/right_slip.png" bindtap="updateNickNameClick"></image>
+                            </div>
+                        </div>
+
+                        <div class="weui-cell weui-cell_input">
+                            <div class="weui-cell__hd">
+                                <div class="weui-label">编号</div>
+                            </div>
+                            <div class="weui-cell__bd">
+                                <div class="weui-input" id="user_no"></div>
+                            </div>
+                        </div>
+
+                        <div class="weui-cell weui-cell_input">
+                            <div class="weui-cell__hd">
+                                <div class="weui-label">题库</div>
+                            </div>
+                            <div class="weui-cell__bd">
+                                <div class="weui-input" onclick="selectExam()">
+                                    <picker bindchange="examChange" value="{{examIndex}}" range="{{allExams}}" range-key="exam_name">
+                                        <div class="weui-input" id='exam_name'></div>
+                                    </picker>
+                                </div>
+                            </div>
+                            <div id='div_look_exam' class="weui-cell__ft right-slip">
+                                <!-- <div class="navigator-arrow"></div> -->
+                                <image class="right-slip" mode="aspectFit" src="../../image/right_slip.png" bindtap="lookExam"></image>
+                            </div>
+                        </div>
+                        <div id="div_end_time" class="weui-cell weui-cell_input">
+                            <div class="weui-cell__hd">
+                                <div class="weui-label">题库有效期</div>
+                            </div>
+                            <div class="weui-cell__bd">
+                                <div class="weui-input" id='end_time'>
+                                </div>
+                            </div>
+                        </div>
+                        <div id='div_brush_num' class="weui-cell weui-cell_input">
+                            <div class="weui-cell__hd">
+                                <div class="weui-label">本周做题</div>
+                            </div>
+                            <div class="weui-cell__bd">
+                                <div class="weui-input" id='brush_num'>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="weui-cell weui-cell_input">
+                            <div class="weui-cell__hd">
+                                <div class="weui-label">版本</div>
+                            </div>
+                            <div class="weui-cell__bd">
+                                <div class="weui-input" id="version">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </form>
+            <div id='div_exam_tip' class="bottom-tip" bindtap="lookExam"></div>
+        </div>
+    </div>
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/c.js"></script>
+<script type="text/javascript">
+    const KEY_DATA = 'user.me';
+    var lastExams = false;
+    var this_data = {
+        'examName': '未选择',
+        'examNo': 0,
+        'allExams': []
+    };
+    var UIActionSelector = null;
+    function frameFirstShow(){
+
+    }
+    function onShow(){
+      console.info('on show me');
+    }
+    function loadCacheData() {
+        var cache_data = $api.getStorage(KEY_DATA);
+        if (cache_data != null) {
+            this_data = cache_data;
+        }
+        setData(this_data);
+    }
+
+    function setData(n_data) {
+        if (n_data != null) {
+            for (key in n_data) {
+                this_data[key] = n_data[key];
+            }
+            $api.setStorage(KEY_DATA, this_data);
+        }
+        if ('examNo' in n_data || 'examName' in n_data) {
+            var nExamNo = null;
+            var nExamName = null;
+            var examIndex = -1;
+            var examEndTime = null;
+            var examTip = '';
+            if ('examNo' in n_data) {
+                nExamNo = n_data['examNo'];
+            } else {
+                nExamName = n_data['examName'];
+            }
+            for (var i = 0; i < this_data.allExams.length; i++) {
+                var _item = this_data.allExams[i];
+                if (_item['exam_no'] == nExamNo || _item['exam_name'] == nExamName) {
+                    this_data['examNo'] = _item['exam_no'];
+                    this_data['examName'] = _item['exam_name'];
+                    examIndex = i;
+                    if (_item.exam_role > 10) {
+                        examTip = '未拥有当前题库所有操作权限';
+                    }
+                    if ('end_time' in _item) {
+                        var end_time = _item['end_time'];
+                        if (end_time == null) {
+                            examEndTime = '无期限'
+                        } else if (end_time <= 0) {} else {
+                            examEndTime = timestamp_2_date(end_time);
+                        }
+                    }
+
+                    break;
+                }
+            }
+            setData({
+                examTip: examTip,
+                examEndTime: examEndTime,
+                examIndex: examIndex
+            })
+            if (examIndex < 0) {
+                this_data['examNo'] = 0;
+                this_data['examName'] = '未选择';
+            }
+
+            if (this_data['examNo'] != 0) {
+                $api.removeCls($api.dom('#div_look_exam'), 'display-none');
+                if(lastExams == true){
+                  setDefaultExam(this_data.allExams[examIndex]);
+                if (this_data.allExams[examIndex].exam_role <= 3) {
+                    getTips();
+                }
+                getBrushNum();
+              }
+            } else {
+                $api.addCls($api.dom('#div_look_exam'), 'display-none');
+            }
+            $api.text($api.dom("#exam_name"), this_data['examName']);
+
+        }
+        if ('examTip' in n_data) {
+            var examTip = n_data['examTip'];
+            if (examTip) {
+                $api.removeCls($api.dom('#div_exam_tip'), 'display-none');
+
+            } else {
+                $api.addCls($api.dom('#div_exam_tip'), 'display-none');
+            }
+            $api.text($api.dom("#div_exam_tip"), examTip);
+        }
+        if ('examEndTime' in n_data) {
+            if (n_data['examEndTime']) {
+                $api.addCls($api.dom('#div_end_time'), 'weui-cell');
+                $api.removeCls($api.dom('#div_end_time'), 'display-none');
+
+            } else {
+                $api.addCls($api.dom('#div_end_time'), 'display-none');
+                $api.removeCls($api.dom('#div_end_time'), 'weui-cell');
+            }
+            $api.text($api.dom("#end_time"), n_data['examEndTime']);
+
+        }
+        if ('brushNum' in n_data) {
+            if (n_data['brushNum'] >= 0) {
+                $api.addCls($api.dom('#div_brush_num'), 'weui-cell');
+                $api.removeCls($api.dom('#div_brush_num'), 'display-none');
+
+            } else {
+                $api.removeCls($api.dom('#div_brush_num'), 'weui-cell');
+                $api.addCls($api.dom('#div_brush_num'), 'display-none');
+            }
+            $api.text($api.dom("#brush_num"), n_data['brushNum']);
+        }
+
+        if('user_no' in n_data){
+          if(n_data['user_no'] == null){
+            $api.text($api.dom("#nick_name"), '');
+            $api.text($api.dom("#user_no"), '');
+            $api.addCls($api.dom('#div_avatar'), 'display-none');
+            $api.removeCls($api.dom('#div_login'), 'display-none');
+
+          }
+          else{
+            $api.text($api.dom("#nick_name"), n_data['nick_name']);
+            $api.text($api.dom("#user_no"), n_data['user_no']);
+            $api.addCls($api.dom('#div_login'), 'display-none');
+            $api.removeCls($api.dom('#div_avatar'), 'display-none');
+            var el_img = $api.dom('#avatar');
+            if(n_data['avatar_url']){
+              $api.attr(el_img, 'src', SERVER_ENDPOINT + n_data['avatar_url']);
+            }
+            else{
+              $api.attr(el_img, 'src', '../../image/unregister.png');
+            }
+          }
+
+        }
+    }
+
+    function getExams() {
+        var exam_url = '/exam/info/';
+        my_auth_request(exam_url, 'GET', null, function(ret) {
+            var allExams = [];
+            var resData = ret.data;
+            for (var index in resData) {
+                if (resData[index]["question_num"] > 0) {
+                    allExams.push(resData[index]);
+                }
+            }
+            lastExams = true;
+            setData({
+                allExams: allExams,
+                examNo: this_data.examNo
+            });
+
+
+        })
+    }
+
+    function selectExam() {
+        var values = [];
+        for (var i = 0; i < this_data.allExams.length; i++) {
+            var _item = this_data.allExams[i];
+            values.push({
+                'name': _item.exam_name,
+                'id': _item.exam_no
+            });
+        }
+        var actives = [0];
+        if ('examIndex' in this_data) {
+            var _index = this_data['examIndex'];
+            if (_index >= 0) {
+                actives[0] = _index;
+            }
+        }
+        UIActionSelector.open({
+            datas: values,
+            actives: actives,
+            layout: {
+                row: 5,
+                col: 1,
+                height: 25,
+                size: 18,
+                sizeActive: 18,
+                rowSpacing: 18,
+                colSpacing: 10,
+                maskBg: 'rgba(0,0,0,0.2)',
+                color: '#888',
+                colorSelected: 'rgb(0,0,0)'
+            },
+            selectedBold: false,
+            animation: true,
+            title: {
+                text: '',
+            },
+        }, function(ret, err) {
+            if (ret) {
+                if (ret.eventType == 'ok') {
+                    var examNo = ret.selectedInfo[0]['id'];
+                    setData({
+                        examNo: examNo
+                    });
+                }
+            } else {
+                alert(JSON.stringify(err));
+            }
+        });
+    }
+
+    function getBrushNum() {
+        var examNo = this_data.examNo;
+        if (examNo == 0) {
+            setData({
+                brushNum: -1
+            });
+            return false;
+        }
+        var url = '/exam/usage?exam_no=' + examNo;
+        my_auth_request(url, 'GET', null, function(ret) {
+            if (ret.status == false) {
+                return false;
+            }
+            var resData = ret.data;
+
+            var brushNum = resData['num'];
+            setData({
+                brushNum: brushNum
+            });
+        })
+    }
+
+    function getTips() {
+
+    }
+    apiready = function() {
+        // clearCache();
+        onShow();
+        loadCacheData();
+        var info_url = '/user/info/';
+        my_auth_request(info_url, 'GET', null, info_return, function(){
+          setData({'examTip': '连接网络异常，请检查网络'});
+        });
+        $api.addCls($api.dom('#div_avatar'), 'display-none');
+        $api.removeCls($api.dom('#div_login'), 'display-none');
+        $api.text($api.dom("#version"), api.appVersion);
+        UIActionSelector = api.require('UIActionSelector');
+    }
+
+
+    function info_return(ret) {
+        var data = ret.data;
+        if (data.length <= 0) {
+            return false;
+        }
+        var user_data = data[0];
+        setData(user_data);
+        console.info(JSON.stringify(user_data));
+
+        getExams();
+    }
+
+    function toLogin() {
+        api.openWin({
+            name: '登录',
+            url: 'login.html',
+            pageParam: {
+                name: 'test'
+            }
+        });
+
+    }
+</script>
+
+</html>

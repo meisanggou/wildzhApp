@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="divport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/style.css" />
+    <title>浏览TXT</title>
+    <style>
+        html,
+        body {
+            height: auto;
+            margin: 0;
+            /*background-color: #D4ECD6;*/
+        }
+
+        header {
+            background-color: #f2f2f2;
+            height: 50px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 3;
+        }
+
+        .flex-con {
+            overflow: auto;
+            position: relative;
+            padding-bottom: 56px;
+        }
+
+        .foot-div {
+            width: 100%;
+            height: 50px;
+        }
+        #fill {
+            content: '';
+            position: fixed;
+            top: 53px;
+            bottom: 0;
+            width: 100%;
+            z-index: 1;
+            background-color: #D4ECD6
+        }
+
+        #content {
+            /*height: auto;*/
+            margin-top: 50px; // dynamic update
+            width: 98%;
+            overflow-y: auto font-size: 15px;
+            margin-left: 5px;
+            /*padding-right: 5px;*/
+            word-wrap: break-word;
+            z-index: 2;
+            margin-bottom: 50px;
+
+        }
+
+        @supports (height: 100vh) {
+            body {
+                background: linear-gradient(to right top, #0089f2 50%, #DDD 50%);
+                background-size: 100% calc(100% - 100vh + 53px);
+                background-repeat: no-repeat;
+            }
+
+        }
+    </style>
+</head>
+
+<body>
+    <div id="fill"></div>
+    <div id="wrap" class="flex-wrap flex-vertical">
+        <header>
+            <div class="status">
+                <span>当前位置：</span><span id="current_location"></span>
+            </div>
+
+        </header>
+        <main id="content">
+
+        </main>
+        <div id="footer" class="border-t bottom">
+            <div class='bottom-btn' onclick="hide_file()">已读</button>
+            </div>
+        </div>
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/c.js"></script>
+<script type="text/javascript">
+    apiready = function() {
+        $api.fixStatusBar($api.dom('header'));
+        api.setStatusBarStyle({
+            style: 'dark',
+            color: '#6ab494'
+        });
+        var c_offset = $api.offset($api.dom('header'));
+        var header_h = c_offset.h;
+        $api.css($api.dom('#content'), 'margin-top:' + (header_h + 3) + 'px');
+        $api.css($api.dom('body'), str_format('background-size: 100% calc(100% - 100vh + %spx);', [(header_h + 5)] ));
+        $api.css($api.dom('#fill'), str_format('top: %spx;', [(header_h + 3)] ));
+        init();
+    }
+    var current_path = '';
+
+    function hide_file() {
+        if (current_path.length <= 0) {
+            return false;
+        }
+        var fs = api.require('fs');
+        var items = current_path.split('/');
+        items[items.length - 1] = "." + items[items.length - 1];
+        var n_path = items.join('/');
+
+        db_update(current_path);
+    }
+
+    function add_event() {
+        api.addEventListener({
+            name: 'pause'
+        }, function(ret, err) {
+            api.openWin({
+                name: '主页',
+                url: 'widget://index.html',
+                pageParam: {
+                    from: 'explor.browse',
+                    index: 4
+                }
+            });
+        });
+    }
+
+    function init() {
+        add_event()
+
+        var pageParam = api.pageParam;
+        if (!('path' in pageParam)) {
+            var data = "";
+            for (var i = 0; i < 200; i++) {
+                data += i + '<br>';
+            }
+            $api.html($api.dom("#content"), data);
+            return false;
+        }
+        init_db();
+        var keys_font_size = 'text.font_size';
+        var font_size = $api.getStorage(keys_font_size);
+        if (font_size != null && font_size < 30 && font_size > 5) {
+            $api.css($api.dom("#content"), 'font-size:' + font_size + 'px');
+        }
+        current_path = pageParam.path;
+        //异步返回结果：
+        api.readFile({
+            path: current_path
+        }, function(ret, err) {
+            if (ret.status) {
+                var data = ret.data.replace(/\n/g, '<br />');
+                data += '<br/> ----end----';
+                data += current_path;
+                $api.html($api.dom("#content"), data);
+            } else {
+                alert(err.msg);
+            }
+        });
+        $api.text($api.dom("#current_location"), reshow_name(current_path));
+        api.addEventListener({
+            name: 'volumeup'
+        }, function(ret, err) {
+            if (ret.longPress == true) {
+                return false;
+            }
+            var old_value = $api.cssVal($api.dom("#content"), 'font-size');
+            var old_value = parseInt(old_value)
+            if (isNaN(old_value)) {
+                old_value = 12;
+            }
+            if (old_value > 30) {
+                return false;
+            }
+            var new_value = old_value + 1;
+            $api.css($api.dom("#content"), 'font-size:' + new_value + 'px');
+            $api.setStorage(keys_font_size, new_value);
+        });
+        api.addEventListener({
+            name: 'volumedown'
+        }, function(ret, err) {
+            if (ret.longPress == true) {
+                return false;
+            }
+            var old_value = $api.cssVal($api.dom("#content"), 'font-size');
+            var old_value = parseInt(old_value)
+            if (isNaN(old_value)) {
+                old_value = 12;
+            }
+            if (old_value < 5) {
+                return false;
+            }
+            var new_value = old_value - 1;
+            $api.css($api.dom("#content"), 'font-size:' + new_value + 'px');
+            $api.setStorage(keys_font_size, new_value);
+        });
+    }
+
+    var _DB_FILE_PATH = 'fs://db/'
+    var _DB_NAME = 'en_box'
+    var _DB_T = 't_files2';
+
+    function init_db() {
+        var db = api.require('db');
+        ret = db.openDatabaseSync({
+            name: _DB_NAME,
+            path: _DB_FILE_PATH
+        });
+        if (ret.status != true) {
+            alert(JSON.stringify(ret));
+        }
+
+    }
+
+    function db_update(path) {
+        var p_index = path.lastIndexOf('/');
+        if (p_index < 0) {
+            return false;
+        }
+        var top_dir = path.substring(0, p_index + 1);
+        var name = path.substring(p_index + 1, path.length);
+        var db = api.require('db');
+        var sql = str_format("UPDATE %s set is_hide=1 WHERE top_dir='%s' and name='%s'", [_DB_T, top_dir, name])
+        var ret = db.executeSqlSync({
+            name: _DB_NAME,
+            sql: sql
+        });
+        if(ret.status == true){
+          api.toast({
+              msg: '设置已读成功',
+              duration: 2000,
+              location: 'bottom'
+          });
+        }else{
+          alert(JSON.stringify(ret));
+        }
+    }
+
+    function reshow_name(name){
+      const max_len = 35;
+      if(name.length < max_len){
+        return name;
+      }
+      // var u_len = user_root_dir.length;
+
+      var name_items = name.split('/');
+      var i = 0;
+      var l = name_items.length - 1;
+      var n_name = name_items[l];
+      l -= 1;
+      while (i < 3 && l >= 0 && n_name.length < 30) {
+        n_name = name_items[l] + '/' + n_name;
+        i += 1;
+        l -= 1;
+      }
+      if(l == 0){
+        return n_name;
+      }
+      return 'fs://...' + n_name;
+    }
+</script>
+
+</html>

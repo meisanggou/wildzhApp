@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="divport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/style.css" />
+    <title>阅读TXT</title>
+    <style>
+        header {
+            background-color: #f2f2f2;
+            height: 50px;
+        }
+
+        .flex-con {
+            overflow: auto;
+            position: relative;
+            padding-bottom: 56px;
+        }
+
+        .foot-div {
+            width: 100%;
+            height: 50px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrap" class="flex-wrap flex-vertical">
+        <header>
+            <div class="status">
+                <!-- <span>当前位置：</span><span id="current_location"></span> -->
+                <span>当前进度：</span><span id="current_progress"></span>
+            </div>
+
+        </header>
+        <div id="footer" class="border-t bottom">
+            <div class='bottom-btn' onclick="hide_file()">已读</button>
+            </div>
+        </div>
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/c.js"></script>
+<script type="text/javascript">
+    apiready = function() {
+        $api.fixStatusBar($api.dom('header'));
+        api.setStatusBarStyle({
+            style: 'dark',
+            color: '#6ab494'
+        });
+        init();
+    }
+    var current_path = '';
+
+    function hide_file() {
+        if (current_path.length <= 0) {
+            return false;
+        }
+        db_update(current_path);
+    }
+
+    function add_event() {
+        api.addEventListener({
+            name: 'pause'
+        }, function(ret, err) {
+            api.openWin({
+                name: '主页',
+                url: 'widget://index.html',
+                pageParam: {
+                    from: 'explor.browse',
+                    index: 4
+                }
+            });
+        });
+        var bookReader = api.require('bookReader');
+        var OBrightness = null;
+        bookReader.getBrightness(function(ret, err) {
+            if (ret.status) {
+                OBrightness = ret.brightness;
+            } else {
+                alert(JSON.stringify(err));
+            }
+        });
+        api.addEventListener({
+            name: 'viewappear'
+        }, function(ret, err) {
+            if (OBrightness != null) {
+                bookReader.brightness({
+                    brightness: 20
+                }, function(ret, err) {
+                    if (ret.status) {
+                        alert(JSON.stringify(ret));
+                    } else {
+                        alert(JSON.stringify(err));
+                    }
+                });
+            }
+        });
+        api.addEventListener({
+            name: 'viewdisappear'
+        }, function(ret, err) {
+          if (OBrightness != null) {
+              bookReader.brightness({
+                  brightness: OBrightness
+              }, function(ret, err) {
+                  if (ret.status) {
+                      alert(JSON.stringify(ret));
+                  } else {
+                      alert(JSON.stringify(err));
+                  }
+              });
+          }
+        });
+    }
+
+    function init() {
+        add_event()
+
+        var pageParam = api.pageParam;
+        if (!'path' in pageParam) {
+            return false;
+        }
+        init_db();
+        var keys_font_size = 'text.font_size';
+        var font_size = $api.getStorage(keys_font_size);
+        if (font_size != null && font_size < 30 && font_size > 5) {} else {
+            font_size = 12;
+        }
+        current_path = pageParam.path;
+        //异步返回结果：
+        var header_height = $api.offset($api.dom('header')).h;
+        var bookReader = api.require('bookReader');
+        bookReader.open({
+            x: 0,
+            y: header_height,
+            w: api.winWidth,
+            h: api.frameHeight - 50 - header_height,
+            codingType: 'utf8',
+            animType: 'scroll',
+            textStyle: {
+                size: font_size
+            },
+            filePath: current_path
+        }, function(ret, err) {
+            if (ret) {
+                console.info(JSON.stringify(ret));
+                var et = ret.eventType
+                if (et == 'page_up' || et == 'page_down') {
+                    var p = parseFloat(ret.progress).toFixed(2) + '%';
+                    $api.text($api.dom("#current_progress"), p);
+                }
+            } else {
+                alert(JSON.stringify(err));
+            }
+        });
+        api.addEventListener({
+            name: 'volumeup'
+        }, function(ret, err) {
+            if (ret.longPress == true) {
+                return false;
+            }
+            console.info('volume up');
+            var old_value = $api.getStorage(keys_font_size);
+            var old_value = parseInt(old_value)
+            if(isNaN(old_value)){
+              old_value = 12;
+            }
+            if (old_value > 30) {
+                return false;
+            }
+            var new_value = old_value + 1;
+            bookReader.setValue({
+                textStyle: {
+                    size: new_value
+                }
+            }, function(ret, err) {
+                if (ret.status) {} else {
+                    alert(JSON.stringify(err));
+                }
+            });
+            $api.setStorage(keys_font_size, new_value);
+        });
+        api.addEventListener({
+            name: 'volumedown'
+        }, function(ret, err) {
+            if (ret.longPress == true) {
+                return false;
+            }
+            var old_value = $api.getStorage(keys_font_size);
+            var old_value = parseInt(old_value)
+            if(isNaN(old_value)){
+              old_value = 12;
+            }
+            if (old_value < 5) {
+                return false;
+            }
+            var new_value = old_value - 1;
+            bookReader.setValue({
+                textStyle: {
+                    size: new_value
+                }
+            }, function(ret, err) {
+                if (ret.status) {} else {
+                    alert(JSON.stringify(err));
+                }
+            });
+            $api.setStorage(keys_font_size, new_value);
+        });
+    }
+
+    var _DB_FILE_PATH = 'fs://db/'
+    var _DB_NAME = 'en_box'
+    var _DB_T = 't_files2';
+
+    function init_db() {
+        var db = api.require('db');
+        ret = db.openDatabaseSync({
+            name: _DB_NAME,
+            path: _DB_FILE_PATH
+        });
+        if (ret.status != true) {
+            alert(JSON.stringify(ret));
+        }
+
+    }
+
+    function db_update(path) {
+        var p_index = path.lastIndexOf('/');
+        if (p_index < 0) {
+            return false;
+        }
+        var top_dir = path.substring(0, p_index + 1);
+        var name = path.substring(p_index + 1, path.length);
+        var db = api.require('db');
+        var sql = str_format("UPDATE %s set is_hide=1 WHERE top_dir='%s' and name='%s'", [_DB_T, top_dir, name])
+        var ret = db.executeSqlSync({
+            name: _DB_NAME,
+            sql: sql
+        });
+        alert(JSON.stringify(ret));
+    }
+
+</script>
+
+</html>

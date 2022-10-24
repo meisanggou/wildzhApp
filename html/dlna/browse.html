@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="divport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/style.css" />
+    <title>文件浏览</title>
+    <style>
+        header {
+            background-color: #f2f2f2;
+        }
+
+        .status {
+            height: 50px;
+            line-height: 50px;
+            text-align: center;
+            display: block;
+            color: #323237;
+            position: relative;
+        }
+
+        .foot-div {
+            width: 100%;
+            height: 50px;
+        }
+
+        .page {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin： auto;
+            font-size: 20px;
+        }
+
+        .login {
+            display: block;
+            width: 100%;
+        }
+
+        .form-lable {
+            text-align: justify;
+            text-align: justify;
+            text-justify: distribute-all-lines;
+            /*ie6-8*/
+            text-align-last: justify;
+            /* ie9*/
+            -moz-text-align-last: justify;
+            /*ff*/
+            -webkit-text-align-last: justify;
+            /*chrome 20+*/
+            width: 80px;
+        }
+
+        .item {
+            width: 100%;
+            display: flex;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-input {
+            margin-left: 5px;
+            border-radius: 1px;
+            border: 1px solid #c5bebe;
+            height: 23px;
+            width: 60%;
+            font-size: 20px;
+        }
+
+        .form-button {
+            font-size: 20px;
+        }
+        /*input {}*/
+    </style>
+</head>
+
+<body>
+    <div id="wrap" class="flex-wrap flex-vertical">
+        <header>
+            <div class="status">
+                <div><span>当前位置：</span><span id="current_location"></span></div>
+                <div><span>条目:</span><span id="current_num"></span>/<span id="total_num"></span>-<span id="read_num"></span></div>
+            </div>
+
+        </header>
+        <div id="main" class="flex-con">
+
+        </div>
+        <div id="footer" class="border-t bottom">
+            <div class='bottom-btn' onclick="scan_device()" class="">扫描设备</div>
+            <div class='bottom-btn' onclick="manual_play()" class="">投屏</div>
+        </div>
+    </div>
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/c.js"></script>
+<script type="text/javascript" src="../../script/ui_c.js"></script>
+<script type="text/javascript">
+    var IMPORTING = false;
+    var root_dir = 'fs://en_box';
+    var UIListView = null;
+    var path_list = [];
+    var path_index = -1;
+    var SHOW_HIDDEN = false;
+    const SHOW_NUM = 50;
+    var READ_NUM = 0;
+    var user_name = null;
+
+    var user_root_dir = root_dir;
+    var current_dir = user_root_dir;
+
+    apiready = function() {
+        $api.fixStatusBar($api.dom('header'));
+        api.setStatusBarStyle({
+            style: 'dark',
+            color: '#6ab494'
+        });
+        var pageParam = api.pageParam;
+        if (!'user_name' in pageParam) {
+            user_name = '0.guest';
+        } else {
+            user_name = pageParam.user_name;
+        }
+
+        init();
+        api.addEventListener({
+            name: 'keyback'
+        }, function(ret, err) {
+            back();
+        });
+    }
+    rightBtn = {
+        bgColor: '#388e8e',
+        activeBgColor: '',
+        width: 70,
+        title: '打开',
+        titleSize: 12,
+        titleColor: '#fff',
+        icon: '',
+        iconWidth: 20
+    }
+
+    function show_path_items(items) {
+        var data = [];
+        for (var i = 0; i < items.length; i++) {
+            var _item = items[i];
+            var item = {
+                'title': _item.name,
+                subTitle: '',
+                remark: '',
+                icon: '',
+                rightBtns: []
+            }
+            if (_item.type == 'directory') {
+                item['uid'] = 'd_' + _item.name;
+                item['imgPath'] = 'widget://image/folder.png';
+                item['icon'] = 'widget://image/right_slip.png'
+            } else {
+                item['uid'] = 'f_' + _item.name;
+                item['imgPath'] = 'widget://image/txt.png';
+                var dlnaBtn = dict_copy(rightBtn);
+                dlnaBtn['name'] = '投屏';
+                item['rightBtns'].push(dlnaBtn);
+            }
+            data.push(item);
+        }
+        UIListView.reloadData({
+            'data': data
+        });
+
+    }
+
+    function show_directory(s_dir) {
+        var _CURRENT = null;
+        var items = [];
+        if (CURRENT_ENDPOINT == null) {
+            items = ENDPOINTS;
+            _CURRENT = '';
+            show_path_items(items);
+            CURRENT_ENDPOINT = _CURRENT;
+        } else {
+            if (CURRENT_ENDPOINT == '') {
+                for (var i = 0; i < ENDPOINTS.length; i++) {
+                    if (ENDPOINTS[i].name == s_dir) {
+                        _CURRENT = ENDPOINTS[i];
+                        break;
+                    }
+                }
+                if (_CURRENT == null) {
+                    return false;
+                }
+            } else {
+                if (s_dir == null) {
+                    if (CURRENT_ENDPOINT['url'].length <= CURRENT_ENDPOINT['root_url'].length) {
+                        items = ENDPOINTS;
+                        show_path_items(items);
+                        CURRENT_ENDPOINT = '';
+                        return true;
+                    } else {
+                        var _url = CURRENT_ENDPOINT['url'];
+                        if (_url[_url.length - 1] == '/') {
+                            _url = _url.substr(0, _url.length - 1);
+                        }
+                        var index = _url.lastIndexOf('/');
+                        url = _url.substr(0, index + 1);
+                    }
+                } else {
+                    url = CURRENT_ENDPOINT['url'] + s_dir + '/';
+                }
+                _CURRENT = {
+                    'name': s_dir,
+                    'url': url,
+                    'root_url': CURRENT_ENDPOINT['root_url']
+                };
+            }
+            var url = _CURRENT['url'];
+            ajax_request(url, 'GET', null, function(ret) {
+                for (var j = 0; j < ret.length; j++) {
+                    // ret[j]['root_url'] = _CURRENT['root_url'];
+                    // ret[j]['url'] = _CURRENT['url'] + ret[j].name;
+                    // if (ret[j].type == 'directory') {
+                    //     ret[j]['url'] += ret[j]['url'] + '/';
+                    // }
+                    items.push(ret[j]);
+                }
+                show_path_items(items);
+                CURRENT_ENDPOINT = _CURRENT;
+            })
+
+        }
+
+    }
+
+    function init() {
+        var header_height = $api.offset($api.dom('header')).h;
+
+        UIListView = api.require('UIListView');
+        UIListView.open({
+            rect: {
+                x: 0,
+                y: header_height,
+                w: api.winWidth,
+                h: api.frameHeight - 50 - header_height
+            },
+            data: [],
+            rightBtns: [{
+                bgColor: '#388e8e',
+                activeBgColor: '',
+                width: 70,
+                title: '打开',
+                titleSize: 12,
+                titleColor: '#fff',
+                icon: '',
+                iconWidth: 20
+            }],
+            styles: {
+                borderColor: '#696969',
+                item: {
+                    bgColor: '#AFEEEE',
+                    activeBgColor: '#F5F5F5',
+                    height: 55.0,
+                    imgWidth: 40,
+                    imgHeight: 40,
+                    imgCorner: 4,
+                    placeholderImg: '',
+                    titleSize: 12.0,
+                    titleColor: '#000',
+                    subTitleSize: 12.0,
+                    subTitleColor: '#000',
+                    remarkColor: '#000',
+                    remarkSize: 16,
+                    remarkIconWidth: 30
+                }
+            },
+            // fixedOn: api.frameName
+        }, function(ret, err) {
+            if (!ret) {
+                alert(JSON.stringify(err));
+                alert(JSON.stringify(ret));
+                return;
+            }
+            var index = ret.index;
+            switch (ret.eventType) {
+                case 'clickRightBtn':
+                    var btn_index = ret.btnIndex;
+                    UIListView.getDataByIndex({
+                        index: index
+                    }, function(g_ret, err) {
+                        if (!ret) {
+                            return;
+                        }
+                        var uid = g_ret.data.uid;
+                        var d_or_f = uid[0];
+                        var _path = current_dir + '/' + uid.substring(2);
+
+                        switch (btn_index) {
+                            case 0:
+                                //删除
+
+                                break;
+                            case 1:
+                                // 重命名
+                                break;
+                            default:
+                        }
+                    });
+                    break;
+                case 'clickContent':
+                    UIListView.getDataByIndex({
+                        index: index
+                    }, function(g_ret, err) {
+                        var uid = g_ret.data.uid;
+                        var d_or_f = uid[0];
+                        var _path = uid.substring(2);
+                        if (d_or_f == 'd') {
+                            show_directory(_path);
+                        } else {
+                            var l = _path.length;
+                            var p_index = _path.lastIndexOf('.')
+                            if (p_index < 0) {
+                                return;
+                            }
+                            var extension = _path.substring(p_index);
+                            if (extension == '.mp4') {
+                                var p_url = CURRENT_ENDPOINT['url'] + _path;
+                                console.info(p_url);
+                                play(p_url);
+                            } else {
+                                api.toast({
+                                    msg: '不支持的文件类型！',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            }
+                        }
+                    });
+                    break;
+                default:
+                    console.info(ret.eventType);
+                    break;
+            }
+        });
+
+        show_directory('');
+        UIActionSelector = api.require('UIActionSelector');
+        DLNA = api.require('dlna');
+    }
+
+    function back() {
+        if (CURRENT_ENDPOINT == null || CURRENT_ENDPOINT == '') {
+            api.historyBack({
+            }, function(ret, err) {
+                if (!ret.status) {
+                    api.closeWin();
+                }
+            });
+        } else {
+            show_directory(null);
+        }
+    }
+
+</script>
+<script type="text/javascript">
+    var DEVICES = [];
+    var SELECTED_DEVICE = null;
+    var UIActionSelector = null;
+    var DLNA = null;
+    var ENDPOINTS = [{
+        'name': 'movie',
+        'url': 'http://10.180.201.31:8080/movie/',
+        'type': 'directory'
+    }, {
+        'name': 'movie2',
+        'url': 'http://192.168.0.105:8080/movie/',
+        'type': 'directory'
+    }, {
+        'name': 'movie3',
+        'url': 'http://192.168.0.104:8080/movie/',
+        'type': 'directory'
+    }];
+    for (var e_index = 0; e_index < ENDPOINTS.length; e_index++) {
+        ENDPOINTS[e_index]['root_url'] = ENDPOINTS[e_index]['url'];
+    }
+    var CURRENT_ENDPOINT = null;
+
+    function scan_device() {
+        api.showProgress({
+            title: '设备搜索中...',
+            modal: true
+        });
+        DLNA.startSearch(function(ret, err) {
+            api.hideProgress();
+            if (ret.evenType == 'findDevice') {
+                console.info(JSON.stringify(ret));
+                DEVICES = ret.data;
+                openSelector(UIActionSelector, DEVICES, 1, select_driver);
+            } else {
+                alert(JSON.stringify(ret));
+            }
+        });
+
+    }
+
+    function select_driver(item){
+      SELECTED_DEVICE = item[0];
+      console.info(JSON.stringify(item));
+    }
+
+    function manual_play() {
+        var demo_url = 'http://7xue4m.com1.z0.glb.clouddn.com/apicloud/39f7c87f9167f08607e1cef4e48a2e05.mp4';
+        play(demo_url)
+    }
+
+    function play(url) {
+        if (SELECTED_DEVICE == null) {
+            api.toast({
+                msg: '请先扫描和选择设备！',
+                duration: 2000,
+                location: 'middle'
+            });
+            return false;
+        }
+
+        DLNA.startDLNA({
+            xh: SELECTED_DEVICE.xh,
+            url: url
+        }, function(ret, err) {
+            alert(JSON.stringify(ret) + " " + JSON.stringify(err));
+        });
+    }
+
+</script>
+
+</html>

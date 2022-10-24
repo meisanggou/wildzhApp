@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="divport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/style.css" />
+    <title>Template</title>
+    <style>
+        header {
+            background-color: #6ab494;
+        }
+
+        header ul li {
+            height: 50px;
+            line-height: 50px;
+            text-align: center;
+            display: none;
+            color: #323237;
+            position: relative;
+            font-size: 18px;
+        }
+
+        header ul li.active {
+            display: block;
+        }
+    </style>
+    <style>
+        .flex-con {
+            overflow: auto;
+            position: relative;
+        }
+
+        .top {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 15px 0px 15px 25px;
+            border-bottom: 1px solid #5d5d5d;
+            font-size: 16px;
+        }
+
+        .top-title {
+            text-align: center;
+            width: 90%;
+        }
+
+        .icon {
+            float: right;
+            height: 25px;
+            width: 25px;
+        }
+
+        .middle {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 7px 0px 7px 0px;
+            font-size: 16px;
+        }
+
+        .switch {
+            font-size: 35px;
+            text-align: center;
+            width: 35%;
+            padding: 0;
+        }
+
+        .content {
+            font-size: 16px;
+        }
+        .option {
+            border-radius: 2.5px;
+            padding-left: 10px;
+            margin: 10px 10px 10px 10px;
+            font-size: 16px;
+            line-height: 35px;
+        }
+
+        .noChose {
+            background-color: #f0f5fb;
+            color: #363637;
+        }
+
+        .chose {
+            background-color: #fff;
+            color: #7a89df;
+            border: 0.5px #7a89df solid;
+        }
+
+        .errorChose {
+            background-color: #fff;
+            color: #f01212;
+            border: 0.5px #f01212 solid;
+        }
+
+        .switchtext {
+            font-size: 20px;
+            text-align: center;
+        }
+        .bottom-tip {
+            color: red;
+            position: fixed;
+            width: 100%;
+            height: 50px;
+            bottom: 10px;
+            /* z-index: -1; */
+            text-align: center;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrap" class="flex-wrap flex-vertical">
+        <header class="notFrame">
+            <ul>
+                <li class="border-b active">Header</li>
+            </ul>
+        </header>
+        <div id="main" class="flex-con padding-bottom">
+            <modal hidden="{{hiddenFeedback}}" title="问题反馈" confirm-text="反馈" cancel-text="取消" bindcancel="cancelFeedback" bindconfirm="confirmFeedback">
+                <div class="feedback-type">
+                    <picker range="{{fbTypes}}" value="{{fbTypeIndex}}" class="fd-type-picker" bindchange="feedbackTypeChange">
+                        <text class="fb-type-k">问题类型：</text>
+                        <text class="fb-type-v">{{ fbTypes[fbTypeIndex] }}</text>
+                    </picker>
+                </div>
+                <textarea class="fb-desc" type='text' placeholder="" bindinput="feedbackDescInput" maxlength='100' value="{{feedbackDesc}}"></textarea>
+            </modal>
+            <div class='top notFrame'>
+                <div class="top-title" id='exam_name'></div>
+                <image bindtap="feedbackClick" class="icon" src="../../image/feedback.png"></image>
+            </div>
+
+            <div class='middle'>
+                <!-- <div bindtap='before1' class='switch'>‹</div> -->
+                <div wx:if="{{questionNum>1}}" onClick='before(1)' class='switch'>‹</div>
+                <div wx:if="{{questionNum>1}}" onClick='before(10)' class='switch'>‹‹</div>
+                <div class='switchtext' onClick='skipAction()'><text class='question_index'>0</text>/<text id='question_num'>0<text></div>
+                <div wx:if="{{questionNum>1}}" onClick='after(1)' class='switch'>››</div>
+                <div wx:if="{{questionNum>1}}" onClick='after(10)' class='switch'>›</div>
+                <!-- <div bindtap='after1' class='switch'>›</div> -->
+
+            </div>
+
+            <div class='content'>
+                <div id="question_desc"></div>
+                    <div class='questionOption' id="question_options"></div>
+                    <div id="show_answer" class="display-none">
+                        <div class='item' id="question_answer"></div>
+                        <scroll-div scroll-y="true" class='item' id="answer"></scroll-div>
+                  </div>
+            </div>
+        </div>
+        <div id='div_tip' class="bottom-tip" ></div>
+        <div class='bottom notFrame'>
+            <div wx:if="{{questionNum>1}}" onClick='before(1)' class='bottom-btn switch'>‹</div>
+            <div class='bottom-btn switchtext display-none' onClick='showAnswer()' id='btn_show_answer'>显示答案</div>
+            <div class='switchtext display-none' bindtap='toUpdate()' id='btn_to_update'>修改</div>
+            <div wx:if="{{questionNum>1}}" onClick='after(1)' class='bottom-btn switch'>›</div>
+        </div>
+    </div>
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/c.js"></script>
+<script type="text/javascript">
+    var IN_INDEX = false;
+    apiready = function() {
+        $api.fixStatusBar($api.dom('header'));
+        api.setStatusBarStyle({
+            style: 'dark',
+            color: '#6ab494'
+        });
+        onLoad();
+    }
+    function onLoad() {
+        console.info('on load in training');
+        brushList = [];
+        getOrSetDefaultExam();
+        setData({
+            examNo: globalData.defaultExamNo,
+            examName: globalData.defaultExamName
+        });
+        var options = api.pageParam;
+        if('wrong_question' in options){
+          IN_INDEX = true;
+          setWrongQuestionStyle();
+        }
+        // else{
+        //   onShow();
+        // }
+        onShow();
+        if (this_data.examNo != null) {
+            var questionNo = null;
+            addListener();
+            if ('question_no' in options) {
+                questionNo = parseInt(options['question_no']);
+                if (isNaN(questionNo)) {
+                    questionNo = null;
+                } else {
+                    questionItems = [{
+                        'question_no': questionNo
+                    }];
+                    setData({
+                        questionItems: questionItems,
+                        questionNum: 1
+                    })
+                    reqQuestion(0, true);
+                    return true;
+                }
+            }
+            if(IN_INDEX == true){
+              reqWrongAnswer();
+              return true;
+            }
+            getQuestionNos(options);
+        } else {
+          return false;
+        }
+
+    }
+
+    function addListener(){
+        api.addEventListener({
+            name:'swiperight'
+        }, function(ret, err){
+           before(1);
+        });
+        api.addEventListener({
+            name:'swipeleft'
+        }, function(ret, err){
+           after(1);
+        });
+    }
+
+    function onShow(){
+      // $api.text($api.dom("#div_tip"), "");
+      console.info('on Show in training');
+      if (this_data.examNo == null){
+        api.confirm({
+            title: '未选择题库',
+            msg: '未选择题库,确定进入【我的】选择题库',
+            buttons: ['确定', '取消']
+        }, function(ret, err) {
+            if (ret.buttonIndex == 1) {
+                toIndexMeFrame();
+            }
+        });
+        return false;
+      }
+    }
+</script>
+<script type="text/javascript">
+    var this_data = {
+        'questionItems': [],
+        'nowQuestionIndex': 0,
+        'showAnswer': false
+    };
+    var UIActionSelector = null;
+    var brushNum = 0;
+    var brushList = new Array();
+    var idv_mapping = {
+        'examName': 'exam_name',
+        'questionNum': 'question_num'
+    };
+    var showMapping = {
+        'showAnswer': 'show_answer'
+    };
+
+    function setData(nData) {
+        if (nData != null) {
+            for (key in nData) {
+                this_data[key] = nData[key];
+                if (key in idv_mapping) {
+                    $api.text($api.dom("#" + idv_mapping[key]), nData[key]);
+                }
+                if (key in showMapping) {
+                    if (nData[key]) {
+                        $api.removeCls($api.dom('#' + showMapping[key]), 'display-none');
+                    } else {
+                        $api.addCls($api.dom('#' + showMapping[key]), 'display-none');
+                    }
+                }
+            }
+        }
+        if ('nowQuestion' in nData) {
+            var els = $api.domAll(".question_index");
+            for (var i = 0; i < els.length; i++) {
+                $api.text(els[i], this_data['nowQuestionIndex'] + 1);
+            }
+            var nowQuestion = this_data['nowQuestion'];
+            var qdr = nowQuestion.question_desc_rich;
+            var html = '<text>';
+            html += this_data['nowQuestionIndex'] + 1;
+            html += ".</text>";
+            for (var j = 0; j<qdr.length; j++) {
+                var qdItem = qdr[j];
+                if (qdItem.url) {
+                    var _url = SERVER_ENDPOINT + qdItem.url;
+                    html += str_format("<image mode='aspectFit' style='height:%spx;width:%spx;' src='%s'></image>", [qdItem.height, qdItem.width, _url])
+                } else {
+                    html += str_format("<text>%s</text>", [qdItem]);
+                }
+                if (nowQuestion.question_source) {
+                    html += str_format("<text>%s</text>", [nowQuestion.question_source]);
+                }
+                if (this_data.isShowSubject) {
+                    html += str_format("<text>【%s】</text>", [nowQuestion.question_subject]);
+                }
+                $api.html($api.dom("#question_desc"), html);
+                var optsHtml = "";
+                for (var k = 0; k<nowQuestion.options.length; k++) {
+                    var oItem = nowQuestion.options[k];
+                    if (oItem.class) {} else {
+                        oItem.class = 'noChose';
+                    }
+                    var optHtml = str_format("<div class='option %s' onClick='choseItem(%s)'>%s、", [oItem.class, k, globalData.optionChar[k]]);
+                    for (var n = 0; n < oItem.desc_rich.length; n++) {
+                        var dItem = oItem.desc_rich[n];
+                        if (dItem.url) {
+                            var _url = SERVER_ENDPOINT + dItem.url;
+                            optHtml += str_format("<image mode='aspectFit' style='height:%spx;width:%spx;' src='%s'></image>", [dItem.height, dItem.width, _url])
+                        } else {
+                            optHtml += dItem;
+                        }
+                    }
+                    optHtml += "</div>"
+                    optsHtml += optHtml;
+                }
+                $api.html($api.dom("#question_options"), optsHtml);
+            }
+        }
+        if ('questionAnswer' in nData) {
+            var html = "";
+            for (var n = 0; n < nData.questionAnswer.length; n++) {
+                var qaItem = nData.questionAnswer[n];
+                if (qaItem.url) {
+                    var _url = SERVER_ENDPOINT + qaItem.url;
+                    html += str_format("<image mode='aspectFit' style='height:%spx;width:%spx;' src='%s'></image>", [qaItem.height, qaItem.width, _url])
+                } else {
+                    html += qaItem;
+                }
+            }
+            $api.html($api.dom("#question_answer"), html);
+            var aHtml = "<text>解析：</text>";
+            for (var i = 0; i < this_data.nowQuestion.answer_rich.length; i++) {
+                var aItem = this_data.nowQuestion.answer_rich[i];
+                if (aItem.url) {
+                    var _url = SERVER_ENDPOINT + aItem.url;
+                    aHtml += str_format("<image mode='aspectFit' style='height:%spx;width:%spx;' src='%s'></image>", [aItem.height, aItem.width, _url])
+                } else {
+                    aHtml += aItem;
+                }
+            }
+            $api.html($api.dom("#answer"), aHtml);
+        }
+        if ('showAnswer' in nData) {
+            if (nData['showAnswer']) {
+                if (this_data.canUpdate) {
+                  $api.removeCls($api.dom('#btn_show_answer'), 'bottom-btn');
+                  $api.addCls($api.dom('#btn_to_update'), 'bottom-btn');
+
+                }
+            } else {
+                $api.addCls($api.dom('#btn_show_answer'), 'bottom-btn');
+                $api.removeCls($api.dom('#btn_to_update'), 'bottom-btn');
+            }
+        }
+    }
+</script>
+<script type="text/javascript">
+    function reqQuestion(startIndex, updateShow = false, stepNum = 13) {
+        var examNo = this_data.examNo;
+        if (examNo == null) {
+            console.info("Can not req, examNo is null");
+            return false;
+        }
+        var isReq = this_data.isReq;
+        if (isReq == true) {
+            return false;
+        } else {
+            setData({
+                isReq: true
+            })
+        }
+
+        var nos = "";
+        var _start = -1;
+        var _end = -1;
+        var questionItems = this_data.questionItems;
+        // startIndex 可能超出最大题目长度
+        if (startIndex >= questionItems.length) {
+            startIndex = questionItems.length - 1;
+        }
+        if (stepNum < 0) {
+            _start = startIndex + stepNum;
+            _end = startIndex + 1
+        } else {
+            _start = startIndex;
+            _end = startIndex + stepNum;
+        }
+        if (_end > questionItems.length) {
+            _end = questionItems.length;
+        }
+        if (_start < 0) {
+            _start = 0
+        }
+        for (var i = _start; i < _end; i++) {
+            if (("options" in questionItems[i]) && questionItems[i].forceUpdate != true) {
+                continue;
+            }
+            nos += "," + questionItems[i].question_no;
+        }
+        my_auth_request2({
+            url: '/exam/questions/?exam_no=' + examNo + "&nos=" + nos,
+            method: 'GET',
+            success: res => {
+                if (res.status != true) {
+                    return;
+                }
+                var canUpdate = false;
+                if ('exam' in res) {
+                    var exam_item = res.exam;
+                    if (exam_item.exam_role <= 3) {
+                        canUpdate = true;
+                    }
+                }
+                var newItems = res.data;
+                for (var i = _end - 1; i >= _start; i--) {
+                    for (var j = 0; j < newItems.length; j++) {
+                        if (questionItems[i].question_no == newItems[j].question_no) {
+                            questionItems[i]["question_desc"] = newItems[j]["question_desc"];
+                            questionItems[i]["question_desc_rich"] = newItems[j]["question_desc_rich"]
+                            questionItems[i]["question_desc_url"] = newItems[j]["question_desc_url"];
+                            questionItems[i]["options"] = newItems[j]["options"];
+                            questionItems[i]["answer_rich"] = newItems[j]["answer_rich"]
+                            questionItems[i]["question_source"] = newItems[j]["question_source"]
+                            questionItems[i].forceUpdate = false;
+                            questionItems[i].canUpdate = canUpdate
+                            break;
+                        }
+                    }
+                }
+                // 判断 是否questionItems有题
+                if (questionItems.length <= 0) {
+                    // 没有错题 有问题
+                }
+                if (updateShow) {
+                    setData({
+                        questionNum: questionItems.length
+                    });
+                    changeNowQuestion(startIndex);
+                } else if (startIndex == this_data.nowQuestionIndex) {
+                    // 如果当前请求的内容正好是当前显示的，需要重新更新一下答案显示。答案显示是拼出来的没和变量关联
+                    if (this_data.showAnswer) {
+                        showAnswer();
+                    }
+                }
+                setData({
+                    isReq: false,
+                    canUpdate: canUpdate
+                })
+            },
+            fail: function(errMsg) {
+                console.log('request fail', errMsg)
+                setData({
+                    isReq: false
+                })
+            }
+        })
+    }
+
+    function toIndexMeFrame() {
+        if(IN_INDEX){
+            api.execScript({
+                script: 'changeTab(4);'
+            });
+        }
+        else{
+          api.openWin({
+              name: 'home',
+              url: 'widget://index.html',
+              pageParam: {
+                  'index': 4
+              }
+          });
+      }
+    }
+
+    function getQuestionNos(options) {
+        var args_url = "";
+        var progressStorageKey = "training";
+        if ("select_mode" in options) {
+            args_url += "select_mode=" + options["select_mode"] + "&";
+            progressStorageKey += "_" + options["select_mode"];
+        } else {
+            progressStorageKey += "_" + 0;
+        }
+        if ("question_subject" in options) {
+            args_url += "question_subject=" + options["question_subject"] + "&";
+            progressStorageKey += "_" + options["question_subject"];
+            setData({
+                isShowSubject: false
+            })
+            if ("question_chapter" in options) {
+                args_url += "question_chapter=" + options["question_chapter"] + "&";
+                progressStorageKey += "_" + options["question_chapter"];
+            }
+        } else {
+            progressStorageKey += "_" + 0;
+        }
+        if ("question_source" in options) {
+            args_url += "question_source=" + options["question_source"] + "&";
+            progressStorageKey += "_" + options["question_source"];
+        }
+        var nosStorageKey = progressStorageKey + "_nos"
+        setData({
+            progressStorageKey: progressStorageKey,
+            nosStorageKey: nosStorageKey
+        });
+        var cacheNos = getOrSetExamCacheData(nosStorageKey);
+        // var cache_questions = that.extractQuestionNos(cacheNos);
+
+        // if (cacheNos == null || cacheNos == "" || true) {
+        //     wx.showLoading({
+        //         title: '试题加载中',
+        //     });
+        // }
+        args_url += "exam_no=" + this_data.examNo;
+        args_url += "&compress=true"
+        my_auth_request2({
+            url: '/exam/questions/no/?' + args_url,
+            method: 'GET',
+            success: res => {
+                if (res.status != true) {
+                    // wx.hideLoading();
+                    api.confirm({
+                        title: '无法访问题库',
+                        msg: '题库已删除，或无权访问。确定进入【我的】更换题库',
+                        buttons: ['确定', '取消']
+                    }, function(ret, err) {
+                        if (ret.buttonIndex == 1) {
+                            toIndexMeFrame();
+                        }
+                    });
+                    return
+                }
+                var _questions = extractQuestionNos(res.data['nos']);
+                // for(var q_index=0;q_index<_questions.length;q_index++){
+                //     cache_questions.push(_questions[q_index]);
+                // }
+                // app.getOrSetExamCacheData(nosStorageKey, cache_questions);
+                questionItems = _questions
+                setData({
+                    questionItems: questionItems,
+                    questionNum: _questions.length
+                })
+                if (_questions.length <= 0) {
+                    // wx.hideLoading();
+                    api.confirm({
+                        title: '无题目',
+                        msg: '无相关题目，确定返回',
+                        buttons: ['确定', '取消']
+                    }, function(ret, err) {
+                        if (ret.buttonIndex == 1) {
+                            toIndexMeFrame();
+                        }
+                    });
+                } else {
+                    // 请求questionItems
+                    var progressIndex = getOrSetExamCacheData(this_data.progressStorageKey);
+                    if (progressIndex == null || typeof progressIndex != 'number' || progressIndex <= 0) {
+                        progressIndex = 0;
+                    }
+                    reqQuestion(progressIndex, true);
+                }
+            }
+        })
+    }
+
+    function extractQuestionNos(nos_l) {
+        if (typeof nos_l == "string" || nos_l == null) {
+            return [];
+        }
+        var items = [];
+        var ll = nos_l.length;
+        for (var i = 0; i < ll; i++) {
+            var ll_item = nos_l[i];
+            for (var j = 0; j < ll_item[1]; j++) {
+                var q_item = {
+                    'question_no': ll_item[0] + j
+                }
+                items.push(q_item);
+            }
+        }
+        return items
+    }
+
+    function changeNowQuestion(index) {
+        var skipNums = [];
+        var questionItems = this_data.questionItems;
+        var nowQuestion = questionItems[index];
+        if ("options" in nowQuestion) {
+            //已经获取内容
+        } else {
+            // 没有获取内容
+            // wx.showLoading({
+            //     title: '加载中...',
+            //     mask: true
+            // })
+            reqQuestion(index, true);
+            return;
+        }
+        setData({
+            nowQuestion: nowQuestion,
+            nowQuestionIndex: index,
+            showAnswer: false
+        })
+        setSkipNums(index + 1, questionItems.length);
+    }
+
+    function showAnswer() {
+        var nowQuestion = this_data.nowQuestion;
+        if (nowQuestion == null) {
+            return false;
+        }
+        addBrushNum(nowQuestion.question_no);
+        var questionAnswer = new Array();
+
+        for (var index in nowQuestion.options) {
+            if (parseInt(nowQuestion.options[index]["score"]) > 0) {
+                var tmp_answer = new Array(globalData.optionChar[index], "、");
+                questionAnswer = questionAnswer.concat(tmp_answer);
+                questionAnswer = questionAnswer.concat(nowQuestion.options[index]["desc_rich"]);
+            }
+        }
+        if (questionAnswer.length == 0) {
+            questionAnswer[0] = "没有答案"
+        }
+        setData({
+            showAnswer: true,
+            questionAnswer: questionAnswer
+        })
+    }
+
+    function setSkipNums(num, end_num) {
+      var max_times = 5;
+      var skipIndex = 0;
+      var _num = num;
+      var interval = 10;
+      var r = [];
+      var times = 0;
+      var p_num = 0
+      while (num > 1) {
+          p_num = num - interval;
+          if (p_num > 1)
+              r.push({'name': p_num})
+          else {
+              r.push({'name': 1})
+              break
+          }
+          times += 1
+          if (times >= max_times) {
+              interval *= 10;
+              times = 0;
+          }
+
+          num = p_num;
+      }
+      r.sort(function (a, b) {
+          return a['name'] - b['name'];
+      });
+      r.push({'name': _num});
+      skipIndex = r.length - 1;
+      num = _num;
+      interval = 10;
+      times = 0;
+      while (num < end_num) {
+          p_num = num + interval
+          if (p_num >= end_num) {
+              r.push({'name': end_num});
+              break
+          } else {
+              r.push({'name': p_num});
+          }
+          times += 1;
+          if (times >= max_times) {
+              interval *= 10;
+              times = 0;
+          }
+          num = p_num;
+      }
+      setData({
+          skipNums: r,
+          skipIndex: skipIndex
+      })
+      return r;
+    }
+
+    function before(preNum) {
+        var nowQuestion = this_data.nowQuestion;
+        if(!nowQuestion){
+          return false;
+        }
+        var nowQuestionIndex = this_data.nowQuestionIndex;
+        var questionItems = this_data.questionItems;
+        var preIndex = nowQuestionIndex - preNum;
+        if (nowQuestionIndex <= 0) {
+            // 判断是否当前是否是第一题
+            api.toast({
+                msg: '已是第一题',
+                duration: 1000,
+                location: 'middle'
+            });
+            return true;
+        }
+        if (preIndex <= 0) {
+            preIndex = 0;
+        }
+        if ("options" in questionItems[preIndex]) {
+            //已经获取内容
+            changeNowQuestion(preIndex);
+        } else {
+            // 没有获取内容
+            // wx.showLoading({
+            //     title: '加载中...',
+            //     mask: true
+            // })
+            reqQuestion(preIndex, true, -13)
+        }
+
+    }
+
+    function after(afterNum) {
+        var nowQuestion = this_data.nowQuestion;
+        if(!nowQuestion){
+          return false;
+        }
+        var nowQuestionIndex = this_data.nowQuestionIndex;
+        var questionItems = this_data.questionItems;
+        var questionLen = questionItems.length;
+        var nextIndex = nowQuestionIndex + afterNum;
+        if (nowQuestionIndex >= questionItems.length - 1) {
+            // 判断是否当前是否是最后一题
+            api.confirm({
+                title: '已是最后一题',
+                msg: '是否从头开始练习？',
+                buttons: ['确定', '取消']
+            }, function(ret, err) {
+                if (ret.buttonIndex == 1) {
+                    reqQuestion(0, true);
+                }
+            });
+            return true;
+        }
+        if (nextIndex >= questionItems.length) {
+            nextIndex = questionItems.length - 1;
+        }
+        if ("options" in questionItems[nextIndex]) {
+            //已经获取内容
+            var nowQuestion = questionItems[nextIndex];
+            changeNowQuestion(nextIndex);
+            // 判断紧接着10条是否都已预获取数据
+            for (var i = 1; i < 11 && nextIndex + i < questionLen; i++) {
+                if (!("options" in questionItems[nextIndex + i])) {
+                    reqQuestion(nextIndex + i);
+                    break;
+                }
+            }
+        } else {
+            // 没有获取内容
+            // wx.showLoading({
+            //     title: '加载中...',
+            //     mask: true
+            // })
+            reqQuestion(nextIndex, true)
+        }
+    };
+
+    function choseItem(choseIndex){
+      var nowQuestion = this_data.nowQuestion;
+      var nowQuestionIndex = this_data.nowQuestionIndex;
+      addBrushNum(nowQuestion.question_no);
+      var optionDoms = $api.domAll("#question_options div");
+      for(var i=0;i<optionDoms.length; i++){
+        var el = optionDoms[i];
+        if(i != choseIndex){
+          $api.removeCls(el, 'errorChose');
+          $api.removeCls(el, 'chose');
+        }
+        else{
+          if (parseInt(nowQuestion["options"][choseIndex]["score"]) > 0) {
+            $api.addCls(el, 'chose');
+            if(this_data.showAnswer == false){
+              var interval = setInterval(function () {
+                  clearInterval(interval)
+                  after(1);
+              }, 1000)
+            }
+          }
+          else{
+            $api.addCls(el, 'errorChose');
+            // 显示答案
+            showAnswer();
+            // 记录错题
+            recordWrong(this_data.examNo, [nowQuestion.question_no]);
+          }
+        }
+
+      }
+      return;
+      setData({
+          nowQuestion: nowQuestion
+      })
+    }
+
+    function addBrushNum (q_no) {
+        if (brushList.indexOf(q_no) >= 0) {
+            return false;
+        }
+        brushNum += 1;
+        brushList.push(q_no);
+        saveBrushNum();
+    }
+
+    function saveBrushNum () {
+        if (brushNum <= 0) {
+            return false;
+        }
+        var _num = brushNum;
+        brushNum = 0;
+        var examNo = this_data.examNo;
+        var data = {
+            'exam_no': examNo,
+            'num': _num
+        }
+        my_auth_request2({
+            url: '/exam/usage?exam_no=' + examNo,
+            method: 'POST',
+            data: data,
+            success: res => {},
+            fail: function () {
+                brushNum += _num;
+            }
+        });
+    }
+
+    function skipAction(){
+      var values = this_data['skipNums'];
+      var active = this_data['skipIndex'];
+      if(UIActionSelector == null){
+        UIActionSelector = api.require('UIActionSelector');
+      }
+      UIActionSelector.open({
+          datas: values,
+          actives: [active],
+          layout: {
+              row: 5,
+              col: 1,
+              height: 25,
+              size: 18,
+              sizeActive: 18,
+              rowSpacing: 18,
+              colSpacing: 10,
+              maskBg: 'rgba(0,0,0,0.2)',
+              color: '#888',
+              colorSelected: 'rgb(0,0,0)'
+          },
+          selectedBold: false,
+          animation: true,
+          title: {
+              text: '',
+          },
+      }, function(ret, err) {
+          if (ret) {
+              if (ret.eventType == 'ok') {
+                  var no = ret.selectedInfo[0]['name'];
+                  changeNowQuestion(no - 1);
+              }
+          } else {
+              alert(JSON.stringify(err));
+          }
+      });
+    }
+
+    function recordWrong(examNo, wrongQuestion){
+        my_auth_request2({
+            url: '/exam/wrong/',
+            method: "POST",
+            data: {
+                "question_no": wrongQuestion,
+                "exam_no": examNo
+            }
+        })
+    }
+</script>
+<script type="text/javascript">
+    var firstEnter = true;
+    function setWrongQuestionStyle(){
+      var notFrameEls = $api.domAll('.notFrame');
+      for(var i=0;i<notFrameEls.length;i++){
+          $api.css(notFrameEls[i], 'display:none');
+      }
+      $api.removeCls($api.dom("#main"), "padding-bottom");
+    }
+    function reqWrongAnswer() {
+        var examNo = this_data.examNo;
+        if (examNo == null) {
+            return false;
+        }
+        var questionItems = this_data.questionItems;
+        var questionLen = questionItems.length;
+        var minWrongTime = 0;
+        if (questionLen <= 0) {
+            // wx.showLoading({
+            //     title: '加载中...',
+            // })
+        } else {
+            minWrongTime = questionItems[questionLen - 1].wrong_time;
+        }
+        my_auth_request2({
+            url: '/exam/wrong/?exam_no=' + examNo + "&min_wrong_time=" + minWrongTime,
+            methods: "GET",
+            success: function(res) {
+                if (res.status != true) {
+                    // wx.hideLoading();
+                    api.confirm({
+                        title: '无法访问题库',
+                        msg: '题库已删除，或无权访问。确定进入【我的】更换题库',
+                        buttons: ['确定', '取消']
+                    }, function(ret, err) {
+                        if (ret.buttonIndex == 1) {
+                            toIndexMeFrame();
+                        }
+                    });
+                    return false;
+                }
+                var addQuestionItems = res.data;
+                // 如果有新的错题，显示第一个，没有保持原来的显示
+                var showIndex = this_data.nowQuestionIndex;
+                var latestQuestionItems = questionItems;
+                if (addQuestionItems.length > 0) {
+                    // 按照错误时间排序 最新错题排到前面
+                    addQuestionItems.sort(function(a, b) {
+                        return a.wrong_time - b.wrong_time;
+                    })
+                    latestQuestionItems = addQuestionItems.concat(questionItems);
+                    showIndex = 0;
+                }
+                // 判定最新的试题是否在
+                questionItems = latestQuestionItems;
+                setData({questionItems: questionItems});
+                // wx.hideLoading();
+                if (questionItems.length <= 0 && firstEnter) {
+                    api.confirm({
+                        title: '无错题',
+                        msg: '没有发现错题',
+                        buttons: ['确定', '取消']
+                    }, function(ret, err) {
+
+                    });
+                    firstEnter = false;
+                    return false;
+                }
+                if (addQuestionItems.length > 0) {
+                    // 请求questionItems
+                    reqQuestion(0, true);
+                }
+            },
+            fail: function(errMsg) {
+                $api.text($api.dom("#div_tip"), "无法连接远程主机获取错题信息");
+            }
+        })
+    }
+</script>
+</html>

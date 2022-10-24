@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>练习</title>
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/style.css" />
+    <style>
+        .empty {
+            text-align: center;
+            padding: 120px 0;
+        }
+
+        .page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin： auto;
+        }
+
+        .button-menu {
+            /*display: flex;*/
+            width: 250px;
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 20px;
+            height: 60px;
+            color: #ffffff;
+            font-size: 23px;
+            line-height: 60px;
+            text-align: center;
+        }
+
+        .button-color1 {
+            width: 100%;
+            background-color: #fa4545;
+            border-radius: 15px;
+        }
+
+        .button-color2 {
+            width: 100%;
+            background-color: #f19e20;
+            border-radius: 15px;
+        }
+
+        .button-color3 {
+            background-color: #de3ef3;
+            border-radius: 15px;
+        }
+
+        .button-color4 {
+            background-color: #cbda05;
+            border-radius: 15px;
+        }
+
+        .button-color5 {
+            background-color: #52910b;
+            border-radius: 15px;
+        }
+
+        .error-tip {
+            font-size: 18px;
+            color: red;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- <div class="empty">练习2</div> -->
+    <div class="page full-height">
+        <div class="" id="main_content">
+            <div class='button-menu'>
+                <div class='button-color1' onclick="comprehensiveExercise()">综合练习</div>
+            </div>
+            <!-- </div> -->
+            <div class='button-menu'>
+                <div class='button-color2' onclick="subjectExercise()">分科练习</div>
+
+            </div>
+            <div class='button-menu' wx:if="{{subjects_array[0].length>0}}">
+                <div class='button-color3' onclick="chapterExercise()">章节练习</div>
+            </div>
+            <div class='button-menu' id='div_source'>
+                <div class='button-color4' onclick="sourceExercise()">真题练习</div>
+
+            </div>
+            <div class='button-menu' id='div_update'>
+                <picker bindchange="updateQuestionChange" class='picker' range="{{select_modes}}" range-key="name">
+                    <div class='button-color5'>更新试题</div>
+                </picker>
+            </div>
+        </div>
+        <div id='error_content' class="display-none">
+            <div class='button-menu'>
+                <div class="error-tip" id='error_msg'></div>
+            </div>
+
+        </div>
+    </div>
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/c.js"></script>
+<script type="text/javascript">
+    function onShow() {
+        refreshExam(false);
+    }
+
+    function refreshExam(force) {
+        var examNo = getDefaultExamNo();
+        if (examNo) {
+
+        } else {
+            api.confirm({
+                title: '未选择题库',
+                msg: '未选择题库,确定进入【我的】选择题库',
+                buttons: ['确定', '取消']
+            }, function(ret, err) {
+                if (ret.buttonIndex == 1) {
+                    api.execScript({
+                        script: 'changeTab(4);'
+                    });
+                    var index = ret.buttonIndex;
+                }
+            });
+            errorMsg = '未查询到题库详情，切换题库';
+            setData({
+                errorMsg: errorMsg
+            });
+            return false;
+        }
+        var nowT = get_timestamp2();
+        var intervalT = nowT - lastUpdateSource;
+        if (intervalT < 300 && lastExamNo == examNo && force == false) {
+          console.info('no refresh');
+            return false;
+        }
+        console.info('real refresh');
+        getExam(examNo);
+        getExamSources(examNo);
+    }
+
+    function getExam(examNo) {
+        var that = this;
+        my_auth_request2({
+            url: '/exam/info/?exam_no=' + examNo,
+            method: 'GET',
+            success: res => {
+                var resData = res.data;
+                var errorMsg = '';
+                if (res.status == false || resData.length <= 0) {
+                    errorMsg = '未查询到题库详情，切换题库'
+                    setData({
+                        errorMsg: errorMsg
+                    })
+                    return false;
+                }
+                var examItem = resData[0];
+                if (examItem['exam_role'] > 30) {
+                    errorMsg = '无权限进行操作，请先升级成会员！';
+                } else if (examItem['exam_role'] <= 3) {
+                    setData({
+                        canUpdate: true
+                    })
+                } else {
+                    setData({
+                        canUpdate: false
+                    })
+                }
+                // var select_modes = [{'name': '全部题型', 'value': -1}];
+                var select_modes = [];
+                if ('select_modes' in examItem) {
+                    var _select_modes = examItem['select_modes'];
+                    for (var i = 0; i < _select_modes.length; i++) {
+                        var _item = _select_modes[i];
+                        if (_item.enable == true) {
+                            _item['id'] = i;
+                            select_modes.push(_item);
+                        }
+                    }
+                }
+                if (select_modes.length <= 0) {
+                    select_modes.push({
+                        'name': '全部题型',
+                        'value': -1
+                    });
+                }
+                var subjects_array = [
+                    [],
+                    []
+                ];
+                var subjects = [];
+                var chapters = [];
+                if ('subjects' in examItem) {
+                    var _subjects = examItem['subjects'];
+                    for (var i = 0; i < _subjects.length; i++) {
+                        var _item = _subjects[i];
+                        var chItem = {
+                            'name': _item.name,
+                            'id': i,
+                            'sub': []
+                        };
+                        if (_item.enable == true) {
+                            _item['value'] = i;
+                            if (!'chapters' in _item) {
+                                _item['chapters'] = [];
+                            }
+                            _item['chapters'].unshift({
+                                'name': '全部章节',
+                                'enable': true
+                            });
+                            for (var j = 0; j < _item['chapters'].length; j++) {
+                                _cItem = _item['chapters'][j];
+                                _cItem['sub'] = select_modes;
+                                chItem['sub'].push(_cItem);
+                            }
+                            _item['id'] = i;
+                            _item['sub'] = select_modes;
+                            subjects.push(_item);
+                            chapters.push(chItem);
+                        }
+                    }
+                }
+                setData({
+                    errorMsg: errorMsg,
+                    selectModes: select_modes,
+                    subjectsArray: subjects,
+                    chaptersArray: chapters
+                });
+            },
+            fail: res => {
+                setData({
+                    errorMsg: '未能成功加载题库信息，检查网络或重试！'
+                });
+            }
+        })
+    }
+
+    function getExamSources(examNo) {
+        my_auth_request2({
+            url: '/exam/questions/sources?exam_no=' + examNo,
+            method: 'GET',
+            success: res => {
+                lastUpdateSource = get_timestamp2();
+                lastExamNo = examNo;
+                var resData = res.data;
+                var sources = resData['sources'];
+                for(index in sources){
+                  sources[index]['name'] = sources[index]['question_source'];
+                }
+                setData({
+                    sourcesArray: sources
+                });
+            },
+            fail: res => {}
+        })
+    }
+
+    function openSelector(obj, values, col, successFunc) {
+        if (obj == null) {
+            obj = api.require('UIActionSelector');
+        }
+        obj.open({
+            datas: values,
+            layout: {
+                row: 5,
+                col: col,
+                height: 25,
+                size: 18,
+                sizeActive: 18,
+                rowSpacing: 18,
+                colSpacing: 10,
+                maskBg: 'rgba(0,0,0,0.2)',
+                color: '#888',
+                colorSelected: 'rgb(0,0,0)'
+            },
+            selectedBold: false,
+            animation: true,
+            title: {
+                text: '',
+            },
+        }, function(ret, err) {
+            if (ret) {
+                if (ret.eventType == 'ok') {
+                    successFunc(ret.selectedInfo)
+                }
+            } else {
+                alert(JSON.stringify(err));
+            }
+        });
+    }
+    var UIActionSelector = null;
+    var UIActionSelector2 = null;
+    var UIActionSelector3 = null;
+    var UIActionSelector4 = null;
+
+    function comprehensiveExercise() {
+        openSelector(UIActionSelector, this_data['selectModes'], 1, function(selectedInfo) {
+            var selectMode = selectedInfo[0]['id'];
+            startTraining(selectMode, -1, null, null);
+        })
+    }
+
+    function subjectExercise() {
+        openSelector(UIActionSelector2, this_data['subjectsArray'], 2, function(selectedInfo) {
+            var selectMode = selectedInfo[1]['id'];
+            var subjectValue = selectedInfo[0]['id'];
+            startTraining(selectMode, subjectValue, null, null);
+        })
+    }
+
+    function chapterExercise() {
+        openSelector(UIActionSelector3, this_data['chaptersArray'], 3, function(selectedInfo) {
+            var selectMode = selectedInfo[2]['id'];
+            var subjectValue = selectedInfo[0]['id'];
+            var chValue = selectedInfo[1]['name'];
+            startTraining(selectMode, subjectValue, chValue, null);
+        })
+    }
+
+    function sourceExercise(){
+      openSelector(UIActionSelector4, this_data['sourcesArray'], 1, function(selectedInfo) {
+          var source = selectedInfo[0]['name'];
+          startTraining(-1, -1, null, source);
+      })
+    }
+
+    function startTraining(SMValue, SJValue, CHValue, sourceValue, action) {
+        var pageParam = {'from': 'home'}
+        var url = 'training.html';
+        // var url = "training?from=home";
+        if (action == 'update') {
+            url = "../questions/question?from=home";
+        }
+        if (SMValue >= -1) {
+            pageParam['select_mode'] =  SMValue;
+        }
+        if (SJValue >= 0) {
+            pageParam['question_subject'] = SJValue;
+        }
+        if (CHValue != null) {
+            pageParam['question_chapter'] = CHValue;
+        }
+        if (sourceValue != null) {
+            pageParam['question_source'] = sourceValue;
+        }
+        console.info(url);
+        api.openWin({
+            name: 'training',
+            url: url,
+            pageParam: pageParam
+        });
+    }
+</script>
+<script type="text/javascript">
+    var this_data = {};
+    var lastExamNo = null;
+    var lastUpdateSource = 0;
+
+    function setData(nData) {
+        if (nData != null) {
+            for (key in nData) {
+                this_data[key] = nData[key];
+            }
+            // $api.setStorage(KEY_DATA, this_data);
+        }
+        if ('errorMsg' in nData) {
+            var errorMsg = this_data['errorMsg'];
+            if (errorMsg) {
+                $api.text($api.dom('#error_msg'), errorMsg);
+                $api.removeCls($api.dom('#error_content'), 'display-none');
+                $api.addCls($api.dom('#main_content'), 'display-none');
+            } else {
+                $api.removeCls($api.dom('#main_content'), 'display-none');
+                $api.addCls($api.dom('#error_content'), 'display-none');
+            }
+        }
+        if ('canUpdate' in nData) {
+            if (nData['canUpdate']) {
+                $api.removeCls($api.dom('#div_update'), 'display-none');
+            } else {
+                $api.addCls($api.dom('#div_update'), 'display-none');
+            }
+        }
+        if('sourcesArray' in nData){
+          if(nData['sourcesArray'].length > 0){
+              $api.removeCls($api.dom('#div_source'), 'display-none');
+          }
+          else{
+              $api.addCls($api.dom('#div_source'), 'display-none');
+          }
+        }
+
+    }
+    apiready = function() {
+        console.info('ready in training')
+        onShow();
+    }
+    function frameFirstShow(){
+
+    }
+</script>
+
+</html>
