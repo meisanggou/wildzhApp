@@ -64,6 +64,21 @@ function db_select(top_dir, name) {
     return ret.data
 }
 
+function db_select_hide() {
+    var db = api.require('db');
+    var sql = str_format('SELECT top_dir,name,is_folder,is_hide,num,mod_time FROM %s where is_hide="1"', [_DB_T2])
+    var ret = db.selectSqlSync({
+        name: _DB_NAME,
+        sql: sql
+    });
+    if (ret.status) {
+        // alert(JSON.stringify(ret));
+    } else {
+        alert(JSON.stringify(ret));
+    }
+    return ret.data
+}
+
 function db_insert(items, batch_num) {
     if (batch_num == null) {
         batch_num = 30;

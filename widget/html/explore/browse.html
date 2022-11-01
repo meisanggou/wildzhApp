@@ -161,6 +161,9 @@
                                 <dd>
                                     <a href="#"><span onclick="import_from_server()">导入</span></a>
                                 </dd>
+                                <dd>
+                                    <a href="#"><span onclick="export_read()">导出已读</span></a>
+                                </dd>
                             </dl>
                         </li>
                         <li>
@@ -1300,6 +1303,26 @@
       reload_show_path_list();
       api.hideProgress();
 
+    }
+
+    function export_read(){
+      IMPORTING = true;
+      api.prompt({
+          title: '服务器地址',
+          text: 'http://',
+          buttons: ['确定', '取消']
+      }, function(ret, err) {
+          var index = ret.buttonIndex;
+          var text = ret.text;
+          if(index == 1){
+            var items = db_select_hide();
+            start_report(text, items);
+          }
+          else{
+            IMPORTING = false;
+          }
+      });
+      hide_menu();
     }
 </script>
 </html>

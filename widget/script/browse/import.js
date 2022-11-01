@@ -156,3 +156,59 @@ function sync_completed(){
     IMPORTING = false;
   }
 }
+
+// 以下是上报
+function start_report(server, items){
+  if(server.indexOf('http') != 0){
+    server = 'http://' + server;
+  }
+  _report_action(server, items, 0, 100);
+}
+
+function _report_end(){
+  IMPORTING = false;
+  set_progress('上传结束', null);
+
+}
+
+function _report_action(server, items, start, num){
+  var p = start * 100 / items.length;
+  var data = [];
+  for(var i=0; i<num; i++){
+    if(start + i >= items.length){
+      break
+    };
+    data.push(items[start + i].name);
+  }
+  if(data.length <= 0){
+    console.info('上传完成');
+    set_progress('上传完成', null);
+    api.toast({
+      msg: '上报完成，共' + items.length + '个条目',
+      duration: 8000,
+      location: 'bottom'
+  });
+    _report_end();
+    return;
+  }
+  set_progress('正在上报 ' +  data[0] + ' 到：' + server, p);
+  api.ajax({
+      url: server,
+      method: 'POST',
+        headers: {
+            'Content-Type': 'application/json;charset=utf-8'
+        },
+        data: {
+            body: {'items': data}
+        }
+  }, function(ret, err) {
+      if (ret) {
+        _report_action(server, items, start + num, num);
+      } else {
+          api.alert({
+              msg: JSON.stringify(err)
+          });
+          _report_end();
+      }
+  });
+}
