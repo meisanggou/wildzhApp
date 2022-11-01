@@ -168,6 +168,7 @@ function start_report(server, items){
 function _report_end(){
   IMPORTING = false;
   set_progress('上传结束', null);
+  UIListView.show();
 
 }
 

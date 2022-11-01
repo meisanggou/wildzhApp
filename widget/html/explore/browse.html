@@ -1218,6 +1218,11 @@
     if(sync_server_url == null){
       sync_server_url = "";
     }
+    var _storge_report_server_key = 'browse.report_server_url'
+    var report_server_url = getOrSetCacheData(_storge_report_server_key);
+    if(report_server_url == null){
+        report_server_url = "http://";
+    }
 
     function import_from_server(){
       IMPORTING = true;
@@ -1309,7 +1314,7 @@
       IMPORTING = true;
       api.prompt({
           title: '服务器地址',
-          text: 'http://',
+          text: report_server_url,
           buttons: ['确定', '取消']
       }, function(ret, err) {
           var index = ret.buttonIndex;
@@ -1320,9 +1325,13 @@
           }
           else{
             IMPORTING = false;
+            UIListView.show();
           }
+          report_server_url = text;
+          getOrSetCacheData(_storge_report_server_key, text);
       });
       hide_menu();
+      hide_list();
     }
 </script>
 </html>
